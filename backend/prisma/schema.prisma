@@ -8,18 +8,24 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  googleId    String   @unique @map("google_id")
-  displayName String   @map("display_name")
-  email       String   @unique
-  avatarUrl   String?  @map("avatar_url")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id                  String    @id @default(cuid())
+  spotifyId           String    @unique @map("spotify_id")
+  displayName         String    @map("display_name")
+  email               String    @unique
+  avatarUrl           String?   @map("avatar_url")
+  country             String?   // For Spotify market restrictions
+  spotifyAccessToken  String?   @map("spotify_access_token")
+  spotifyRefreshToken String?   @map("spotify_refresh_token")
+  spotifyTokenExpiry  DateTime? @map("spotify_token_expiry")
+  createdAt           DateTime  @default(now()) @map("created_at")
 
   groupMemberships GroupMember[]
   adminGroups      Group[]
   submissions      Submission[]
   votes           Vote[]
   messages        Message[]
+  playlists       Playlist[]
+  refreshTokens   RefreshToken[]
 
   @@map("users")
 }
@@ -34,10 +40,11 @@ model Group {
   maxVotesPerSong        Int      @default(3) @map("max_votes_per_song")
   createdAt              DateTime @default(now()) @map("created_at")
 
-  admin    User          @relation(fields: [adminId], references: [id])
-  members  GroupMember[]
-  rounds   Round[]
-  messages Message[]
+  admin     User          @relation(fields: [adminId], references: [id])
+  members   GroupMember[]
+  rounds    Round[]
+  messages  Message[]
+  playlists Playlist[]
 
   @@map("groups")
 }
@@ -55,31 +62,35 @@ model GroupMember {
 }
 
 model Round {
-  id          String      @id @default(cuid())
-  groupId     String      @map("group_id")
-  theme       String
-  description String?
-  startDate   DateTime    @map("start_date")
-  endDate     DateTime    @map("end_date")
-  votingStartDate DateTime @map("voting_start_date")
-  status      RoundStatus @default(SUBMISSION)
-  createdAt   DateTime    @default(now()) @map("created_at")
+  id              String      @id @default(cuid())
+  groupId         String      @map("group_id")
+  theme           String
+  description     String?
+  startDate       DateTime    @map("start_date")
+  endDate         DateTime    @map("end_date")
+  votingStartDate DateTime    @map("voting_start_date")
+  status          RoundStatus @default(SUBMISSION)
+  createdAt       DateTime    @default(now()) @map("created_at")
 
   group       Group        @relation(fields: [groupId], references: [id])
   submissions Submission[]
+  playlists   Playlist[]
 
   @@map("rounds")
 }
 
 model Submission {
-  id             String   @id @default(cuid())
-  roundId        String   @map("round_id")
-  userId         String   @map("user_id")
-  youtubeVideoId String   @map("youtube_video_id")
-  videoTitle     String   @map("video_title")
-  videoThumbnail String?  @map("video_thumbnail")
-  channelName    String   @map("channel_name")
-  submittedAt    DateTime @default(now()) @map("submitted_at")
+  id           String   @id @default(cuid())
+  roundId      String   @map("round_id")
+  userId       String   @map("user_id")
+  spotifyTrackId String   @map("spotify_track_id")
+  trackName    String   @map("track_name")
+  artistName   String   @map("artist_name")
+  albumName    String   @map("album_name")
+  imageUrl     String?  @map("image_url")
+  previewUrl   String?  @map("preview_url")
+  spotifyUrl   String   @map("spotify_url")
+  submittedAt  DateTime @default(now()) @map("submitted_at")
 
   round Round  @relation(fields: [roundId], references: [id])
   user  User   @relation(fields: [userId], references: [id])
@@ -117,8 +128,63 @@ model Message {
   @@map("messages")
 }
 
+model Playlist {
+  id        String       @id @default(cuid())
+  name      String
+  userId    String       @map("user_id")
+  groupId   String?      @map("group_id")
+  roundId   String?      @map("round_id")
+  type      PlaylistType @default(CUSTOM)
+  isPublic  Boolean      @default(false) @map("is_public")
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  user  User   @relation(fields: [userId], references: [id])
+  group Group? @relation(fields: [groupId], references: [id])
+  round Round? @relation(fields: [roundId], references: [id])
+  items PlaylistItem[]
+
+  @@map("playlists")
+}
+
+model PlaylistItem {
+  id           String @id @default(cuid())
+  playlistId   String @map("playlist_id")
+  spotifyTrackId String @map("spotify_track_id")
+  trackName    String @map("track_name")
+  artistName   String @map("artist_name")
+  albumName    String @map("album_name")
+  imageUrl     String? @map("image_url")
+  order        Int
+  addedAt      DateTime @default(now()) @map("added_at")
+
+  playlist Playlist @relation(fields: [playlistId], references: [id])
+
+  @@map("playlist_items")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  isRevoked Boolean  @default(false) @map("is_revoked")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
 enum RoundStatus {
   SUBMISSION
   VOTING
   COMPLETED
+}
+
+enum PlaylistType {
+  CUSTOM
+  ROUND_WINNERS
+  ROUND_ALL
+  USER_SUBMISSIONS
+  USER_VOTES
 }

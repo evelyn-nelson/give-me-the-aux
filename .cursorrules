@@ -1,55 +1,63 @@
 # Give Me The Aux - Cursor Rules
 
 ## Project Overview
-This is a React Native (Expo) + Node.js music voting app where users create groups, submit YouTube songs based on themes, and vote on submissions. The app uses PostgreSQL with Prisma ORM and YouTube Data API for music integration.
+
+This is a React Native (Expo) + Node.js music voting app where users create groups, submit Spotify songs based on themes, and vote on submissions. The app uses PostgreSQL with Prisma ORM and Spotify API for music integration.
 
 ## Tech Stack
+
 - **Frontend**: Expo (React Native), TypeScript, React Navigation, TanStack Query, React Hook Form
 - **Backend**: Node.js, Express, TypeScript, Prisma ORM, PostgreSQL
 - **Database**: PostgreSQL (Docker container)
-- **Authentication**: Google OAuth via YouTube/Google APIs
-- **Music Integration**: YouTube Data API v3
+- **Authentication**: Spotify OAuth
+- **Music Integration**: Spotify API
 - **Infrastructure**: Docker, Docker Compose
-	
+
 ## Project Structure
+
 music-voting-app/
-├── .env                    # Unified environment variables
-├── docker-compose.yml      # Docker services configuration
-├── frontend/              # Expo React Native app
-│   ├── app/              # Expo Router app directory
-│   ├── components/       # Reusable UI components
-│   ├── hooks/           # Custom React hooks
-│   ├── services/        # API client functions
-│   └── types/           # TypeScript type definitions
-└── backend/             # Express.js API server
+├── .env # Unified environment variables
+├── docker-compose.yml # Docker services configuration
+├── frontend/ # Expo React Native app
+│ ├── app/ # Expo Router app directory
+│ ├── components/ # Reusable UI components
+│ ├── hooks/ # Custom React hooks
+│ ├── services/ # API client functions
+│ └── types/ # TypeScript type definitions
+└── backend/ # Express.js API server
 ├── src/
-│   ├── routes/      # API route handlers
-│   ├── middleware/  # Express middleware
-│   ├── services/    # Business logic
-│   ├── utils/       # Utility functions
-│   └── types/       # TypeScript types
+│ ├── routes/ # API route handlers
+│ ├── middleware/ # Express middleware
+│ ├── services/ # Business logic
+│ ├── utils/ # Utility functions
+│ └── types/ # TypeScript types
 └── prisma/
 └── schema.prisma # Database schema
 
 ## Database Schema Context
+
 Key models:
-- **User**: Google OAuth, stores googleId, displayName, email
+
+- **User**: Spotify OAuth, stores spotifyId, displayName, email
 - **Group**: Has admin, configurable voting settings (submissionDurationDays, votingDurationDays, votesPerUserPerRound, maxVotesPerSong)
 - **Round**: Belongs to group, has theme, description, and three phases (SUBMISSION, VOTING, COMPLETED)
-- **Submission**: YouTube video per user per round (youtubeVideoId, videoTitle, channelName)
+- **Submission**: Song per user per round (spotifyTrackId, trackName, artistName, albumName)
 - **Vote**: User can vote on submissions with count (points) and optional comment
 - **Message**: Simple chat within groups
 
 ## Code Style & Conventions
 
 ### General
+
 - Use TypeScript for all new code
 - Prefer functional components and hooks
 - Use async/await over promises
 - Use meaningful variable and function names
 - Add JSDoc comments for complex functions
+- Do not add unnecessary comments
 
 ### Backend (Express + Prisma)
+
 - Use Express Router for route organization
 - Middleware pattern for authentication, validation, error handling
 - Prisma Client for all database operations
@@ -58,6 +66,7 @@ Key models:
 - Success responses: `{ data: result }` or direct result for simple cases
 
 ### Frontend (Expo + React Native)
+
 - Use Expo Router for navigation
 - TanStack Query for API state management
 - React Hook Form for form handling
@@ -66,6 +75,7 @@ Key models:
 - TypeScript interfaces for props and API responses
 
 ### File Naming
+
 - **Components**: PascalCase (e.g., `GroupList.tsx`)
 - **Hooks**: camelCase with "use" prefix (e.g., `useGroups.ts`)
 - **API routes**: kebab-case (e.g., `user-groups.ts`)
@@ -74,55 +84,63 @@ Key models:
 ## API Patterns
 
 ### Authentication
-- Use Google OAuth with YouTube scope
+
+- Use Spotify OAuth
 - JWT tokens for session management
 - Middleware: `requireAuth` for protected routes
 - Store user info in req.user after auth
 
 ### Route Structure
-/api/auth/google          # Google OAuth
-/api/auth/me             # Current user info
-/api/groups              # CRUD for groups
-/api/groups/:id/members  # Group membership
-/api/groups/:id/rounds   # Rounds in group
+
+/api/auth/spotify # Spotify OAuth
+/api/auth/me # Current user info
+/api/groups # CRUD for groups
+/api/groups/:id/members # Group membership
+/api/groups/:id/rounds # Rounds in group
 /api/rounds/:id/submissions # Song submissions
-/api/submissions/:id/votes  # Voting on submissions
-/api/groups/:id/messages    # Group chat
-/api/youtube/search         # YouTube search proxy
+/api/submissions/:id/votes # Voting on submissions
+/api/groups/:id/messages # Group chat
+/api/spotify/search # Spotify search proxy
 
 ### Error Handling
+
 - Use try-catch in all async routes
 - Return consistent error format
 - Log errors server-side
 - Handle Prisma errors gracefully
 
-### YouTube Integration
-- Proxy YouTube API calls through backend
-- Cache video metadata in database
+### Spotify Integration
+
+- Proxy Spotify API calls through backend
+- Cache track metadata in database
 - Handle API quota limits gracefully
-- Validate YouTube URLs/IDs
+- Validate Spotify URLs/IDs
 
 ## Frontend Patterns
 
 ### API Calls
+
 - Use TanStack Query for all API calls
 - Custom hooks for each API endpoint
 - Optimistic updates where appropriate
 - Error boundaries for API failures
 
 ### State Management
+
 - TanStack Query for server state
 - React state for local UI state
 - Context for global app state (user, theme)
 - Avoid prop drilling
 
 ### Navigation
+
 - Use Expo Router
 - Type-safe navigation params
 - Handle deep linking for group invites
 - Proper loading states
 
 ### UI Components
+
 - Reusable components in /components
 - Props interfaces for all components
 - Consistent spacing and styling
@@ -131,6 +149,7 @@ Key models:
 ## Common Patterns
 
 ### Database Operations
+
 ```typescript
 // Always use transactions for multi-table operations
 await prisma.$transaction(async (tx) => {
@@ -140,34 +159,41 @@ await prisma.$transaction(async (tx) => {
 // Use include for relations
 const group = await prisma.group.findUnique({
   where: { id },
-  include: { members: true, rounds: true }
+  include: { members: true, rounds: true },
 });
 ```
 
 ### API Response Handling
+
 ```typescript
 // Backend
 res.json({ data: result });
 
 // Frontend
 const { data, error, isLoading } = useQuery({
-  queryKey: ['groups'],
-  queryFn: () => api.getGroups()
+  queryKey: ["groups"],
+  queryFn: () => api.getGroups(),
 });
 ```
 
 ### Form Handling
+
 ```typescript
 // Use React Hook Form
-const { control, handleSubmit, formState: { errors } } = useForm<FormData>();
+const {
+  control,
+  handleSubmit,
+  formState: { errors },
+} = useForm<FormData>();
 ```
 
 ## Environment Variables
+
 All in root .env file:
 
 - DATABASE_URL: PostgreSQL connection
-- GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET: OAuth
-- YOUTUBE_API_KEY: YouTube Data API
+- SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET: OAuth
+- SPOTIFY_API_KEY: Spotify Web API
 - JWT_SECRET: Token signing
 - NODE_ENV: Environment
 
@@ -175,7 +201,7 @@ All in root .env file:
 
 - Use React.memo for expensive components
 - Implement pagination for large lists
-- Cache YouTube API responses
+- Cache Spotify API responses
 - Use database indexes for common queries
 - Optimize bundle size with code splitting
 
@@ -196,6 +222,7 @@ All in root .env file:
 4. Hot reloading enabled for both frontend and backend
 
 ## Common Commands
+
 ```bash
 # Start development
 docker-compose up
@@ -211,10 +238,18 @@ npx expo install package-name
 # Backend
 npm run dev
 npm install package-name
+
+# Generate Prisma client
+docker compose --profile tools run --rm prisma generate
+
+# Push database schema
+docker compose --profile tools run --rm prisma db push
+
+# Open Prisma Studio (optional)
+docker compose --profile tools run --rm -p 5555:5555 prisma studio --hostname 0.0.0.0
 ```
 
 When suggesting code:
-
 
 1. Follow these patterns and conventions
 2. Consider the full-stack context
@@ -224,4 +259,3 @@ When suggesting code:
 6. Consider mobile-first design for frontend
 7. Ensure database operations are efficient
 8. Include loading and error states
-

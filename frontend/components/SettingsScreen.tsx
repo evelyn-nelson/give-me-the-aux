@@ -1,0 +1,270 @@
+import React from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  Switch,
+} from "react-native";
+import { useAuth } from "../contexts/AuthContext";
+
+export const SettingsScreen: React.FC = () => {
+  const { user, logout } = useAuth();
+  const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
+  const [darkModeEnabled, setDarkModeEnabled] = React.useState(true);
+
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: logout,
+      },
+    ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Delete Account",
+      "This action cannot be undone. Are you sure you want to delete your account?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            // Handle account deletion
+            console.log("Account deletion requested");
+          },
+        },
+      ]
+    );
+  };
+
+  const renderSettingItem = (
+    title: string,
+    subtitle?: string,
+    onPress?: () => void,
+    rightComponent?: React.ReactNode
+  ) => (
+    <TouchableOpacity
+      style={styles.settingItem}
+      onPress={onPress}
+      disabled={!onPress}
+    >
+      <View style={styles.settingContent}>
+        <Text style={styles.settingTitle}>{title}</Text>
+        {subtitle && <Text style={styles.settingSubtitle}>{subtitle}</Text>}
+      </View>
+      {rightComponent && (
+        <View style={styles.settingRight}>{rightComponent}</View>
+      )}
+    </TouchableOpacity>
+  );
+
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>User not found</Text>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Settings</Text>
+        <Text style={styles.headerSubtitle}>Manage your account</Text>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Account</Text>
+        {renderSettingItem(
+          "Display Name",
+          user.displayName,
+          undefined,
+          <Text style={styles.settingValue}>{user.displayName}</Text>
+        )}
+        {renderSettingItem(
+          "Email",
+          user.email,
+          undefined,
+          <Text style={styles.settingValue}>{user.email}</Text>
+        )}
+        {renderSettingItem(
+          "User ID",
+          user.id,
+          undefined,
+          <Text style={styles.settingValue}>{user.id}</Text>
+        )}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Preferences</Text>
+        {renderSettingItem(
+          "Push Notifications",
+          "Receive notifications for new rounds and votes",
+          undefined,
+          <Switch
+            value={notificationsEnabled}
+            onValueChange={setNotificationsEnabled}
+            trackColor={{ false: "#404040", true: "#1DB954" }}
+            thumbColor={notificationsEnabled ? "#fff" : "#f4f3f4"}
+          />
+        )}
+        {renderSettingItem(
+          "Dark Mode",
+          "Use dark theme throughout the app",
+          undefined,
+          <Switch
+            value={darkModeEnabled}
+            onValueChange={setDarkModeEnabled}
+            trackColor={{ false: "#404040", true: "#1DB954" }}
+            thumbColor={darkModeEnabled ? "#fff" : "#f4f3f4"}
+          />
+        )}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Data & Privacy</Text>
+        {renderSettingItem("Export My Data", "Download all your data", () => {
+          Alert.alert("Export Data", "Data export feature coming soon!");
+        })}
+        {renderSettingItem("Privacy Policy", "Read our privacy policy", () => {
+          Alert.alert("Privacy Policy", "Privacy policy feature coming soon!");
+        })}
+        {renderSettingItem(
+          "Terms of Service",
+          "Read our terms of service",
+          () => {
+            Alert.alert(
+              "Terms of Service",
+              "Terms of service feature coming soon!"
+            );
+          }
+        )}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Support</Text>
+        {renderSettingItem("Help & FAQ", "Get help and find answers", () => {
+          Alert.alert("Help & FAQ", "Help section coming soon!");
+        })}
+        {renderSettingItem(
+          "Contact Support",
+          "Get in touch with our team",
+          () => {
+            Alert.alert(
+              "Contact Support",
+              "Contact support feature coming soon!"
+            );
+          }
+        )}
+        {renderSettingItem("About", "App version and information", () => {
+          Alert.alert(
+            "About",
+            "Give Me The Aux v1.0.0\n\nA music voting app for friends!"
+          );
+        })}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Account Actions</Text>
+        {renderSettingItem(
+          "Logout",
+          "Sign out of your account",
+          handleLogout,
+          <Text style={styles.dangerText}>Logout</Text>
+        )}
+        {renderSettingItem(
+          "Delete Account",
+          "Permanently delete your account and data",
+          handleDeleteAccount,
+          <Text style={styles.dangerText}>Delete</Text>
+        )}
+      </View>
+    </ScrollView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#191414",
+  },
+  content: {
+    padding: 20,
+    paddingTop: 60,
+  },
+  header: {
+    marginBottom: 30,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#1DB954",
+    marginBottom: 5,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: "#B3B3B3",
+  },
+  section: {
+    marginBottom: 30,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "white",
+    marginBottom: 15,
+  },
+  settingItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 15,
+    paddingHorizontal: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: "#404040",
+  },
+  settingContent: {
+    flex: 1,
+  },
+  settingTitle: {
+    fontSize: 16,
+    color: "white",
+    fontWeight: "500",
+  },
+  settingSubtitle: {
+    fontSize: 14,
+    color: "#B3B3B3",
+    marginTop: 2,
+  },
+  settingRight: {
+    marginLeft: 10,
+  },
+  settingValue: {
+    fontSize: 14,
+    color: "#666",
+  },
+  dangerText: {
+    fontSize: 14,
+    color: "#E53E3E",
+    fontWeight: "500",
+  },
+  errorText: {
+    color: "#E53E3E",
+    fontSize: 16,
+    textAlign: "center",
+    marginTop: 50,
+  },
+});
