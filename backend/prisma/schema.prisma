@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  googleId    String   @unique @map("google_id")
+  displayName String   @map("display_name")
+  email       String   @unique
+  avatarUrl   String?  @map("avatar_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  groupMemberships GroupMember[]
+  adminGroups      Group[]
+  submissions      Submission[]
+  votes           Vote[]
+  messages        Message[]
+
+  @@map("users")
+}
+
+model Group {
+  id                     String   @id @default(cuid())
+  name                   String
+  adminId                String   @map("admin_id")
+  submissionDurationDays Int      @default(3) @map("submission_duration_days")
+  votingDurationDays     Int      @default(2) @map("voting_duration_days")
+  votesPerUserPerRound   Int      @default(10) @map("votes_per_user_per_round")
+  maxVotesPerSong        Int      @default(3) @map("max_votes_per_song")
+  createdAt              DateTime @default(now()) @map("created_at")
+
+  admin    User          @relation(fields: [adminId], references: [id])
+  members  GroupMember[]
+  rounds   Round[]
+  messages Message[]
+
+  @@map("groups")
+}
+
+model GroupMember {
+  groupId  String   @map("group_id")
+  userId   String   @map("user_id")
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  group Group @relation(fields: [groupId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@id([groupId, userId])
+  @@map("group_members")
+}
+
+model Round {
+  id          String      @id @default(cuid())
+  groupId     String      @map("group_id")
+  theme       String
+  description String?
+  startDate   DateTime    @map("start_date")
+  endDate     DateTime    @map("end_date")
+  votingStartDate DateTime @map("voting_start_date")
+  status      RoundStatus @default(SUBMISSION)
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  group       Group        @relation(fields: [groupId], references: [id])
+  submissions Submission[]
+
+  @@map("rounds")
+}
+
+model Submission {
+  id             String   @id @default(cuid())
+  roundId        String   @map("round_id")
+  userId         String   @map("user_id")
+  youtubeVideoId String   @map("youtube_video_id")
+  videoTitle     String   @map("video_title")
+  videoThumbnail String?  @map("video_thumbnail")
+  channelName    String   @map("channel_name")
+  submittedAt    DateTime @default(now()) @map("submitted_at")
+
+  round Round  @relation(fields: [roundId], references: [id])
+  user  User   @relation(fields: [userId], references: [id])
+  votes Vote[]
+
+  @@unique([roundId, userId])
+  @@map("submissions")
+}
+
+model Vote {
+  id           String   @id @default(cuid())
+  submissionId String   @map("submission_id")
+  userId       String   @map("user_id")
+  count        Int      @default(1)
+  comment      String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  submission Submission @relation(fields: [submissionId], references: [id])
+  user       User       @relation(fields: [userId], references: [id])
+
+  @@unique([submissionId, userId])
+  @@map("votes")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  groupId   String   @map("group_id")
+  userId    String   @map("user_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  group Group @relation(fields: [groupId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@map("messages")
+}
+
+enum RoundStatus {
+  SUBMISSION
+  VOTING
+  COMPLETED
+}
