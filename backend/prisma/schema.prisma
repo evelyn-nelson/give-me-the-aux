@@ -66,6 +66,7 @@ model Round {
   groupId         String      @map("group_id")
   theme           String
   description     String?
+  order           Int         @default(1)
   startDate       DateTime    @map("start_date")
   endDate         DateTime    @map("end_date")
   votingStartDate DateTime    @map("voting_start_date")
@@ -76,6 +77,7 @@ model Round {
   submissions Submission[]
   playlists   Playlist[]
 
+  @@unique([groupId, order])
   @@map("rounds")
 }
 
