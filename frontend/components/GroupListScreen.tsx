@@ -53,7 +53,8 @@ export const GroupListScreen: React.FC<GroupListScreenProps> = ({
 
         <View style={styles.groupStats}>
           <Text style={styles.statText}>
-            {group._count.members} member{group._count.members !== 1 ? "s" : ""}
+            {group._count.members} member
+            {group._count.members !== 1 ? "s" : ""}
           </Text>
           <Text style={styles.statText}>•</Text>
           <Text style={styles.statText}>

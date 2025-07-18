@@ -10,7 +10,7 @@ import {
   Alert,
 } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
-import { useDeleteGroup } from "../hooks/useGroups";
+import { useDeleteGroup, useGroup } from "../hooks/useGroups";
 import { Group, Round, User } from "../types/api";
 
 interface GroupDetailScreenProps {
@@ -22,7 +22,7 @@ interface GroupDetailScreenProps {
 }
 
 export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
-  group,
+  group: initialGroup,
   onBack,
   onRoundPress,
   onCreateRoundPress,
@@ -31,10 +31,17 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"rounds" | "members">("rounds");
 
-  const deleteGroupMutation = useDeleteGroup();
-  const isLoading = deleteGroupMutation.isPending;
+  // Fetch fresh group data using the hook
+  const { data: group = initialGroup, isLoading: isLoadingGroup } = useGroup(
+    initialGroup.id
+  );
 
-  const isAdmin = group.adminId === user?.id;
+  const deleteGroupMutation = useDeleteGroup();
+  const isLoading = deleteGroupMutation.isPending || isLoadingGroup;
+
+  // Use the group data, fallback to initialGroup if group is undefined
+  const currentGroup = group || initialGroup;
+  const isAdmin = currentGroup.adminId === user?.id;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -81,7 +88,7 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
           style: "destructive",
           onPress: async () => {
             try {
-              await deleteGroupMutation.mutateAsync(group.id);
+              await deleteGroupMutation.mutateAsync(currentGroup.id);
               onBack();
             } catch (error) {
               Alert.alert("Error", "Failed to delete group. Please try again.");
@@ -116,8 +123,8 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
 
       <View style={styles.roundStats}>
         <Text style={styles.statText}>
-          {round._count.submissions} submission
-          {round._count.submissions !== 1 ? "s" : ""}
+          {round._count?.submissions || 0} submission
+          {(round._count?.submissions || 0) !== 1 ? "s" : ""}
         </Text>
         <Text style={styles.statText}>•</Text>
         <Text style={styles.statText}>
@@ -133,17 +140,36 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
     <View style={styles.memberCard}>
       <View style={styles.memberAvatar}>
         <Text style={styles.memberAvatarText}>
-          {item.user.displayName.charAt(0).toUpperCase()}
+          {item.user.displayName?.charAt(0)?.toUpperCase() || "?"}
         </Text>
       </View>
       <View style={styles.memberInfo}>
-        <Text style={styles.memberName}>{item.user.displayName}</Text>
-        {item.user.id === group.adminId && (
+        <Text style={styles.memberName}>
+          {item.user.displayName || "Unknown User"}
+        </Text>
+        {item.user.id === currentGroup.adminId && (
           <Text style={styles.adminLabel}>Admin</Text>
         )}
       </View>
     </View>
   );
+
+  // Show loading state while fetching group data
+  if (isLoadingGroup) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onBack}>
+            <Text style={styles.backText}>‹ Back</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#FFB000" />
+          <Text style={styles.loadingText}>Loading group...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -153,7 +179,7 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
         </TouchableOpacity>
         {isAdmin && (
           <View style={styles.headerActions}>
-            <TouchableOpacity onPress={() => onEditGroupPress(group)}>
+            <TouchableOpacity onPress={() => onEditGroupPress(currentGroup)}>
               <Text style={styles.editText}>Edit</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -168,19 +194,20 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.groupInfo}>
-          <Text style={styles.groupName}>{group.name}</Text>
+          <Text style={styles.groupName}>{currentGroup.name}</Text>
           <View style={styles.groupStats}>
             <Text style={styles.statText}>
-              {group._count.members} member
-              {group._count.members !== 1 ? "s" : ""}
+              {currentGroup._count?.members || 0} member
+              {(currentGroup._count?.members || 0) !== 1 ? "s" : ""}
             </Text>
             <Text style={styles.statText}>•</Text>
             <Text style={styles.statText}>
-              {group._count.rounds} round{group._count.rounds !== 1 ? "s" : ""}
+              {currentGroup._count?.rounds || 0} round
+              {(currentGroup._count?.rounds || 0) !== 1 ? "s" : ""}
             </Text>
           </View>
           <Text style={styles.createdDate}>
-            Created {formatDate(group.createdAt)}
+            Created {formatDate(currentGroup.createdAt)}
           </Text>
         </View>
 
@@ -218,14 +245,14 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
             {isAdmin && (
               <TouchableOpacity
                 style={styles.createRoundButton}
-                onPress={() => onCreateRoundPress(group.id)}
+                onPress={() => onCreateRoundPress(currentGroup.id)}
               >
                 <Text style={styles.createRoundText}>+ Create New Round</Text>
               </TouchableOpacity>
             )}
 
             <FlatList
-              data={group.rounds}
+              data={currentGroup.rounds || []}
               renderItem={renderRoundCard}
               keyExtractor={(item) => item.id}
               scrollEnabled={false}
@@ -244,7 +271,7 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
         ) : (
           <View style={styles.tabContent}>
             <FlatList
-              data={group.members}
+              data={currentGroup.members || []}
               renderItem={renderMemberCard}
               keyExtractor={(item) => item.user.id}
               scrollEnabled={false}
@@ -473,5 +500,15 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    fontSize: 16,
+    color: "#B3B3B3",
+    marginTop: 12,
   },
 });

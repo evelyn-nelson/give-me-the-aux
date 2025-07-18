@@ -1,3 +1,6 @@
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 import React, { useState } from "react";
 import {
   View,
@@ -29,6 +32,7 @@ export const CreateRoundScreen: React.FC<CreateRoundScreenProps> = ({
     description: "",
     startDate: new Date().toISOString().split("T")[0],
   });
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const createRoundMutation = useCreateRound();
@@ -72,7 +76,12 @@ export const CreateRoundScreen: React.FC<CreateRoundScreenProps> = ({
 
       // Only include start date for the first round
       if (isFirstRound) {
-        submitData.startDate = new Date(formData.startDate).toISOString();
+        // Create a date at midnight in the user's local timezone
+        const year = selectedDate.getFullYear();
+        const month = selectedDate.getMonth();
+        const day = selectedDate.getDate();
+        const localMidnight = new Date(year, month, day);
+        submitData.startDate = localMidnight.toISOString();
       }
 
       await createRoundMutation.mutateAsync(submitData);
@@ -91,6 +100,26 @@ export const CreateRoundScreen: React.FC<CreateRoundScreenProps> = ({
 
   const getMinDate = () => {
     return new Date().toISOString().split("T")[0];
+  };
+
+  const handleDateChange = (
+    event: DateTimePickerEvent,
+    date: Date | undefined
+  ) => {
+    if (date) {
+      setSelectedDate(date);
+      // Format date in local timezone to avoid UTC conversion issues
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      const localDateString = `${year}-${month}-${day}`;
+
+      setFormData((prev) => ({
+        ...prev,
+        startDate: localDateString,
+      }));
+      console.log(localDateString);
+    }
   };
 
   return (
@@ -143,13 +172,26 @@ export const CreateRoundScreen: React.FC<CreateRoundScreenProps> = ({
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Round Start Date *</Text>
-            <TextInput
+            <View style={{ alignSelf: "stretch" }}>
+              <DateTimePicker
+                testID="dateTimePicker"
+                minimumDate={new Date()}
+                value={selectedDate}
+                mode={"date"}
+                onChange={handleDateChange}
+                themeVariant="dark"
+                style={{
+                  marginLeft: -10,
+                }}
+              />
+            </View>
+            {/* <TextInput
               style={[styles.input, errors.startDate && styles.inputError]}
               value={formData.startDate}
               onChangeText={(text) => updateFormData("startDate", text)}
               placeholder="YYYY-MM-DD"
               placeholderTextColor="#666"
-            />
+            /> */}
             {errors.startDate && (
               <Text style={styles.errorText}>{errors.startDate}</Text>
             )}

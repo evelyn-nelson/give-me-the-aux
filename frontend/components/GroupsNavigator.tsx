@@ -58,6 +58,7 @@ export const GroupsNavigator: React.FC = () => {
     setScreenState({
       screen: "round-detail",
       selectedRound: round,
+      selectedGroup: screenState.selectedGroup, // Preserve the current group
     });
   };
 
@@ -79,7 +80,8 @@ export const GroupsNavigator: React.FC = () => {
   };
 
   const handleRoundCreated = () => {
-    // TODO: Refresh group detail
+    // Navigate back to group detail - the query invalidation in useCreateRound
+    // will automatically refresh the group data, and GroupDetailScreen will fetch fresh data
     if (screenState.selectedGroup) {
       navigateToGroupDetail(screenState.selectedGroup);
     } else {
@@ -178,10 +180,12 @@ export const GroupsNavigator: React.FC = () => {
         );
 
       case "round-detail":
-        if (!screenState.selectedRound) return null;
+        if (!screenState.selectedRound || !screenState.selectedGroup)
+          return null;
         return (
           <RoundDetailScreen
             round={screenState.selectedRound}
+            group={screenState.selectedGroup}
             onBack={() => {
               if (screenState.selectedGroup) {
                 navigateToGroupDetail(screenState.selectedGroup);

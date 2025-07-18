@@ -15,23 +15,31 @@ import {
   useUpdateVote,
   useDeleteVote,
 } from "../hooks/useSubmissions";
-import { Round, User, Vote, Submission } from "../types/api";
+import { useRound } from "../hooks/useRounds";
+import { Round, User, Vote, Submission, Group } from "../types/api";
 
 interface RoundDetailScreenProps {
   round: Round;
+  group: Group;
   onBack: () => void;
   onSubmitSongPress: (roundId: string) => void;
   onEditRoundPress?: (round: Round) => void;
 }
 
 export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
-  round,
+  round: initialRound,
+  group,
   onBack,
   onSubmitSongPress,
   onEditRoundPress,
 }) => {
   const { user } = useAuth();
   const [votingState, setVotingState] = useState<Record<string, number>>({});
+
+  // Fetch fresh round data using the hook
+  const { data: round = initialRound, isLoading: isLoadingRound } = useRound(
+    initialRound.id
+  );
 
   const createVoteMutation = useCreateVote();
   const updateVoteMutation = useUpdateVote();
@@ -40,12 +48,14 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
   const isLoading =
     createVoteMutation.isPending ||
     updateVoteMutation.isPending ||
-    deleteVoteMutation.isPending;
+    deleteVoteMutation.isPending ||
+    isLoadingRound;
 
-  const isAdmin = round.group.admin.id === user?.id;
+  // Use the group prop instead of round.group
+  const isAdmin = group?.admin?.id === user?.id;
   const canSubmit =
     round.status === "SUBMISSION" &&
-    !round.submissions.find((s) => s.user.id === user?.id);
+    !round.submissions?.find((s) => s.user?.id === user?.id);
   const canVote = round.status === "VOTING";
 
   const getStatusColor = (status: string) => {
@@ -76,32 +86,36 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
+      month: "numeric",
       day: "numeric",
       year: "numeric",
       hour: "2-digit",
-      minute: "2-digit",
     });
   };
 
   const getTotalVotes = (submission: Submission) => {
-    return submission.votes.reduce((total, vote) => total + vote.count, 0);
+    return (submission.votes || []).reduce(
+      (total, vote) => total + vote.count,
+      0
+    );
   };
 
   const getUserVoteCount = (submission: Submission) => {
-    const userVote = submission.votes.find((v) => v.user.id === user?.id);
+    const userVote = (submission.votes || []).find(
+      (v) => v.user?.id === user?.id
+    );
     return userVote ? userVote.count : 0;
   };
 
   const getTotalUserVotes = () => {
-    return round.submissions.reduce((total, submission) => {
-      const userVote = submission.votes.find((v) => v.user.id === user?.id);
+    return (round.submissions || []).reduce((total, submission) => {
+      const userVote = submission.votes?.find((v) => v.user?.id === user?.id);
       return total + (userVote ? userVote.count : 0);
     }, 0);
   };
 
   const getRemainingVotes = () => {
-    return round.group.votesPerUserPerRound - getTotalUserVotes();
+    return (group?.votesPerUserPerRound || 0) - getTotalUserVotes();
   };
 
   const handleVote = async (submissionId: string, voteCount: number) => {
@@ -114,16 +128,16 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
 
     if (
       getTotalUserVotes() + voteDifference >
-      round.group.votesPerUserPerRound
+      (group?.votesPerUserPerRound || 0)
     ) {
       Alert.alert("Vote Limit", "You don't have enough votes remaining.");
       return;
     }
 
-    if (voteCount > round.group.maxVotesPerSong) {
+    if (voteCount > (group?.maxVotesPerSong || 0)) {
       Alert.alert(
         "Vote Limit",
-        `You can only give up to ${round.group.maxVotesPerSong} votes per song.`
+        `You can only give up to ${group?.maxVotesPerSong || 0} votes per song.`
       );
       return;
     }
@@ -161,7 +175,7 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
   const renderSubmissionCard = ({ item: submission }: { item: Submission }) => {
     const totalVotes = getTotalVotes(submission);
     const userVotes = getUserVoteCount(submission);
-    const isUserSubmission = submission.user.id === user?.id;
+    const isUserSubmission = submission.user?.id === user?.id;
 
     return (
       <View style={styles.submissionCard}>
@@ -181,7 +195,9 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
         <View style={styles.submissionFooter}>
           <Text style={styles.submitterName}>
             Submitted by{" "}
-            {isUserSubmission ? "You" : submission.user.displayName}
+            {isUserSubmission
+              ? "You"
+              : submission.user?.displayName || "Unknown User"}
           </Text>
 
           <View style={styles.voteContainer}>
@@ -216,13 +232,13 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
                 <TouchableOpacity
                   style={[
                     styles.voteButton,
-                    userVotes < round.group.maxVotesPerSong &&
+                    userVotes < (group?.maxVotesPerSong || 0) &&
                       getRemainingVotes() > 0 &&
                       styles.voteButtonActive,
                   ]}
                   onPress={() => handleVote(submission.id, userVotes + 1)}
                   disabled={
-                    userVotes >= round.group.maxVotesPerSong ||
+                    userVotes >= (group?.maxVotesPerSong || 0) ||
                     getRemainingVotes() === 0 ||
                     isLoading
                   }
@@ -230,7 +246,7 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
                   <Text
                     style={[
                       styles.voteButtonText,
-                      userVotes < round.group.maxVotesPerSong &&
+                      userVotes < (group?.maxVotesPerSong || 0) &&
                         getRemainingVotes() > 0 &&
                         styles.voteButtonTextActive,
                     ]}
@@ -246,7 +262,24 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
     );
   };
 
-  const sortedSubmissions = [...round.submissions].sort((a, b) => {
+  // Show loading state while fetching round data
+  if (isLoadingRound) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onBack}>
+            <Text style={styles.backText}>‹ Back</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#FFB000" />
+          <Text style={styles.loadingText}>Loading round...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  const sortedSubmissions = [...(round.submissions || [])].sort((a, b) => {
     if (round.status === "COMPLETED") {
       return getTotalVotes(b) - getTotalVotes(a);
     }
@@ -283,7 +316,9 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
             <Text style={styles.roundDescription}>{round.description}</Text>
           )}
 
-          <Text style={styles.groupName}>in {round.group.name}</Text>
+          <Text style={styles.groupName}>
+            in {group?.name || "Unknown Group"}
+          </Text>
         </View>
 
         <View style={styles.timeline}>
@@ -307,11 +342,11 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
           <View style={styles.votingInfo}>
             <Text style={styles.sectionTitle}>Your Voting</Text>
             <Text style={styles.votingStats}>
-              {getRemainingVotes()} of {round.group.votesPerUserPerRound} votes
+              {getRemainingVotes()} of {group?.votesPerUserPerRound || 0} votes
               remaining
             </Text>
             <Text style={styles.votingHelpText}>
-              You can give up to {round.group.maxVotesPerSong} votes per song
+              You can give up to {group?.maxVotesPerSong || 0} votes per song
             </Text>
           </View>
         )}
@@ -319,7 +354,7 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
         <View style={styles.submissions}>
           <View style={styles.submissionsHeader}>
             <Text style={styles.sectionTitle}>
-              Submissions ({round.submissions.length})
+              Submissions ({(round.submissions || []).length})
             </Text>
             {canSubmit && (
               <TouchableOpacity
@@ -611,5 +646,15 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    fontSize: 16,
+    color: "#B3B3B3",
+    marginTop: 12,
   },
 });

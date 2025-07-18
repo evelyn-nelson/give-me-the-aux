@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApi } from "./useApi";
+import { groupKeys } from "./useGroups";
 import {
   Round,
   CreateRoundData,
@@ -59,6 +60,10 @@ export const useCreateRound = () => {
       });
       // Invalidate groups list to refresh group data
       queryClient.invalidateQueries({ queryKey: ["groups"] });
+      // Invalidate specific group detail to refresh the group with new round
+      queryClient.invalidateQueries({
+        queryKey: groupKeys.detail(newRound.group.id),
+      });
     },
   });
 };

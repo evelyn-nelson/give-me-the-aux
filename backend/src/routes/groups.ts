@@ -157,6 +157,55 @@ router.get(
               status: true,
               startDate: true,
               endDate: true,
+              votingStartDate: true,
+              _count: {
+                select: {
+                  submissions: true,
+                },
+              },
+              group: {
+                select: {
+                  id: true,
+                  name: true,
+                  admin: {
+                    select: {
+                      id: true,
+                      displayName: true,
+                    },
+                  },
+                  votesPerUserPerRound: true,
+                  maxVotesPerSong: true,
+                },
+              },
+              submissions: {
+                select: {
+                  id: true,
+                  spotifyTrackId: true,
+                  trackName: true,
+                  artistName: true,
+                  albumName: true,
+                  imageUrl: true,
+                  user: {
+                    select: {
+                      id: true,
+                      displayName: true,
+                    },
+                  },
+                  votes: {
+                    select: {
+                      id: true,
+                      count: true,
+                      comment: true,
+                      user: {
+                        select: {
+                          id: true,
+                          displayName: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
             },
             orderBy: {
               createdAt: "desc",

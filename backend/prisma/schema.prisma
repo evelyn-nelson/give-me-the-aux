@@ -8,43 +8,41 @@ datasource db {
 }
 
 model User {
-  id                  String    @id @default(cuid())
-  spotifyId           String    @unique @map("spotify_id")
-  displayName         String    @map("display_name")
-  email               String    @unique
-  avatarUrl           String?   @map("avatar_url")
-  country             String?   // For Spotify market restrictions
-  spotifyAccessToken  String?   @map("spotify_access_token")
-  spotifyRefreshToken String?   @map("spotify_refresh_token")
-  spotifyTokenExpiry  DateTime? @map("spotify_token_expiry")
-  createdAt           DateTime  @default(now()) @map("created_at")
-
-  groupMemberships GroupMember[]
-  adminGroups      Group[]
-  submissions      Submission[]
-  votes           Vote[]
-  messages        Message[]
-  playlists       Playlist[]
-  refreshTokens   RefreshToken[]
+  id                  String         @id @default(cuid())
+  spotifyId           String         @unique @map("spotify_id")
+  displayName         String         @map("display_name")
+  email               String         @unique
+  avatarUrl           String?        @map("avatar_url")
+  country             String?
+  createdAt           DateTime       @default(now()) @map("created_at")
+  spotifyAccessToken  String?        @map("spotify_access_token")
+  spotifyRefreshToken String?        @map("spotify_refresh_token")
+  spotifyTokenExpiry  DateTime?      @map("spotify_token_expiry")
+  groupMemberships    GroupMember[]
+  adminGroups         Group[]
+  messages            Message[]
+  playlists           Playlist[]
+  refreshTokens       RefreshToken[]
+  submissions         Submission[]
+  votes               Vote[]
 
   @@map("users")
 }
 
 model Group {
-  id                     String   @id @default(cuid())
+  id                     String        @id @default(cuid())
   name                   String
-  adminId                String   @map("admin_id")
-  submissionDurationDays Int      @default(3) @map("submission_duration_days")
-  votingDurationDays     Int      @default(2) @map("voting_duration_days")
-  votesPerUserPerRound   Int      @default(10) @map("votes_per_user_per_round")
-  maxVotesPerSong        Int      @default(3) @map("max_votes_per_song")
-  createdAt              DateTime @default(now()) @map("created_at")
-
-  admin     User          @relation(fields: [adminId], references: [id])
-  members   GroupMember[]
-  rounds    Round[]
-  messages  Message[]
-  playlists Playlist[]
+  adminId                String        @map("admin_id")
+  submissionDurationDays Int           @default(3) @map("submission_duration_days")
+  votingDurationDays     Int           @default(2) @map("voting_duration_days")
+  votesPerUserPerRound   Int           @default(10) @map("votes_per_user_per_round")
+  maxVotesPerSong        Int           @default(3) @map("max_votes_per_song")
+  createdAt              DateTime      @default(now()) @map("created_at")
+  members                GroupMember[]
+  admin                  User          @relation(fields: [adminId], references: [id])
+  messages               Message[]
+  playlists              Playlist[]
+  rounds                 Round[]
 
   @@map("groups")
 }
@@ -53,65 +51,61 @@ model GroupMember {
   groupId  String   @map("group_id")
   userId   String   @map("user_id")
   joinedAt DateTime @default(now()) @map("joined_at")
-
-  group Group @relation(fields: [groupId], references: [id])
-  user  User  @relation(fields: [userId], references: [id])
+  group    Group    @relation(fields: [groupId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
 
   @@id([groupId, userId])
   @@map("group_members")
 }
 
 model Round {
-  id              String      @id @default(cuid())
-  groupId         String      @map("group_id")
+  id              String       @id @default(cuid())
+  groupId         String       @map("group_id")
   theme           String
   description     String?
-  order           Int         @default(1)
-  startDate       DateTime    @map("start_date")
-  endDate         DateTime    @map("end_date")
-  votingStartDate DateTime    @map("voting_start_date")
-  status          RoundStatus @default(SUBMISSION)
-  createdAt       DateTime    @default(now()) @map("created_at")
-
-  group       Group        @relation(fields: [groupId], references: [id])
-  submissions Submission[]
-  playlists   Playlist[]
+  startDate       DateTime     @map("start_date")
+  endDate         DateTime     @map("end_date")
+  votingStartDate DateTime     @map("voting_start_date")
+  status          RoundStatus  @default(SUBMISSION)
+  createdAt       DateTime     @default(now()) @map("created_at")
+  order           Int          @default(1)
+  playlists       Playlist[]
+  group           Group        @relation(fields: [groupId], references: [id])
+  submissions     Submission[]
 
   @@unique([groupId, order])
   @@map("rounds")
 }
 
 model Submission {
-  id           String   @id @default(cuid())
-  roundId      String   @map("round_id")
-  userId       String   @map("user_id")
+  id             String   @id @default(cuid())
+  roundId        String   @map("round_id")
+  userId         String   @map("user_id")
   spotifyTrackId String   @map("spotify_track_id")
-  trackName    String   @map("track_name")
-  artistName   String   @map("artist_name")
-  albumName    String   @map("album_name")
-  imageUrl     String?  @map("image_url")
-  previewUrl   String?  @map("preview_url")
-  spotifyUrl   String   @map("spotify_url")
-  submittedAt  DateTime @default(now()) @map("submitted_at")
-
-  round Round  @relation(fields: [roundId], references: [id])
-  user  User   @relation(fields: [userId], references: [id])
-  votes Vote[]
+  trackName      String   @map("track_name")
+  artistName     String   @map("artist_name")
+  albumName      String   @map("album_name")
+  imageUrl       String?  @map("image_url")
+  previewUrl     String?  @map("preview_url")
+  spotifyUrl     String   @map("spotify_url")
+  submittedAt    DateTime @default(now()) @map("submitted_at")
+  round          Round    @relation(fields: [roundId], references: [id])
+  user           User     @relation(fields: [userId], references: [id])
+  votes          Vote[]
 
   @@unique([roundId, userId])
   @@map("submissions")
 }
 
 model Vote {
-  id           String   @id @default(cuid())
-  submissionId String   @map("submission_id")
-  userId       String   @map("user_id")
-  count        Int      @default(1)
+  id           String     @id @default(cuid())
+  submissionId String     @map("submission_id")
+  userId       String     @map("user_id")
+  count        Int        @default(1)
   comment      String?
-  createdAt    DateTime @default(now()) @map("created_at")
-
-  submission Submission @relation(fields: [submissionId], references: [id])
-  user       User       @relation(fields: [userId], references: [id])
+  createdAt    DateTime   @default(now()) @map("created_at")
+  submission   Submission @relation(fields: [submissionId], references: [id])
+  user         User       @relation(fields: [userId], references: [id])
 
   @@unique([submissionId, userId])
   @@map("votes")
@@ -123,43 +117,40 @@ model Message {
   userId    String   @map("user_id")
   content   String
   createdAt DateTime @default(now()) @map("created_at")
-
-  group Group @relation(fields: [groupId], references: [id])
-  user  User  @relation(fields: [userId], references: [id])
+  group     Group    @relation(fields: [groupId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 
   @@map("messages")
 }
 
 model Playlist {
-  id        String       @id @default(cuid())
+  id        String         @id @default(cuid())
   name      String
-  userId    String       @map("user_id")
-  groupId   String?      @map("group_id")
-  roundId   String?      @map("round_id")
-  type      PlaylistType @default(CUSTOM)
-  isPublic  Boolean      @default(false) @map("is_public")
-  createdAt DateTime     @default(now()) @map("created_at")
-
-  user  User   @relation(fields: [userId], references: [id])
-  group Group? @relation(fields: [groupId], references: [id])
-  round Round? @relation(fields: [roundId], references: [id])
-  items PlaylistItem[]
+  userId    String         @map("user_id")
+  groupId   String?        @map("group_id")
+  roundId   String?        @map("round_id")
+  type      PlaylistType   @default(CUSTOM)
+  isPublic  Boolean        @default(false) @map("is_public")
+  createdAt DateTime       @default(now()) @map("created_at")
+  items     PlaylistItem[]
+  group     Group?         @relation(fields: [groupId], references: [id])
+  round     Round?         @relation(fields: [roundId], references: [id])
+  user      User           @relation(fields: [userId], references: [id])
 
   @@map("playlists")
 }
 
 model PlaylistItem {
-  id           String @id @default(cuid())
-  playlistId   String @map("playlist_id")
-  spotifyTrackId String @map("spotify_track_id")
-  trackName    String @map("track_name")
-  artistName   String @map("artist_name")
-  albumName    String @map("album_name")
-  imageUrl     String? @map("image_url")
-  order        Int
-  addedAt      DateTime @default(now()) @map("added_at")
-
-  playlist Playlist @relation(fields: [playlistId], references: [id])
+  id             String   @id @default(cuid())
+  playlistId     String   @map("playlist_id")
+  spotifyTrackId String   @map("spotify_track_id")
+  trackName      String   @map("track_name")
+  artistName     String   @map("artist_name")
+  albumName      String   @map("album_name")
+  imageUrl       String?  @map("image_url")
+  order          Int
+  addedAt        DateTime @default(now()) @map("added_at")
+  playlist       Playlist @relation(fields: [playlistId], references: [id])
 
   @@map("playlist_items")
 }
@@ -171,17 +162,16 @@ model RefreshToken {
   expiresAt DateTime @map("expires_at")
   createdAt DateTime @default(now()) @map("created_at")
   isRevoked Boolean  @default(false) @map("is_revoked")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
 }
 
 enum RoundStatus {
-  INACTIVE
   SUBMISSION
   VOTING
   COMPLETED
+  INACTIVE
 }
 
 enum PlaylistType {

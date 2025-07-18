@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, RoundStatus } from "@prisma/client";
 import { requireAuth, AuthRequest } from "../middleware/auth";
 import { apiRoutesLimiter } from "../middleware/rateLimit";
 
@@ -46,7 +46,7 @@ router.post(
           .json({ error: "Group not found or you are not the admin" });
       }
 
-      // Check if there's already an active round in this group
+      // Check if there's already an active round (SUBMISSION or VOTING status)
       const activeRound = await prisma.round.findFirst({
         where: {
           groupId: groupId,
@@ -55,12 +55,6 @@ router.post(
           },
         },
       });
-
-      if (activeRound) {
-        return res
-          .status(400)
-          .json({ error: "There is already an active round in this group" });
-      }
 
       // Get the last round to determine the start date for the new round
       const lastRound = await prisma.round.findFirst({
@@ -71,6 +65,12 @@ router.post(
       let roundStartDate: Date;
       let roundEndDate: Date;
       let roundVotingStartDate: Date;
+      let roundStatus: RoundStatus = "SUBMISSION";
+
+      // If there's an active round, new rounds should be INACTIVE
+      if (activeRound) {
+        roundStatus = "INACTIVE" as RoundStatus;
+      }
 
       if (!lastRound) {
         // First round - require only start date
@@ -159,7 +159,7 @@ router.post(
           startDate: roundStartDate,
           endDate: roundEndDate,
           votingStartDate: roundVotingStartDate,
-          status: "SUBMISSION",
+          status: roundStatus,
         },
         include: {
           group: {
@@ -173,6 +173,8 @@ router.post(
                   avatarUrl: true,
                 },
               },
+              votesPerUserPerRound: true,
+              maxVotesPerSong: true,
             },
           },
           submissions: {
@@ -233,6 +235,21 @@ router.get(
           groupId: groupId,
         },
         include: {
+          group: {
+            select: {
+              id: true,
+              name: true,
+              admin: {
+                select: {
+                  id: true,
+                  displayName: true,
+                  avatarUrl: true,
+                },
+              },
+              votesPerUserPerRound: true,
+              maxVotesPerSong: true,
+            },
+          },
           submissions: {
             include: {
               user: {
@@ -306,6 +323,8 @@ router.get(
                   avatarUrl: true,
                 },
               },
+              votesPerUserPerRound: true,
+              maxVotesPerSong: true,
             },
           },
           submissions: {
