@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApi } from "./useApi";
-import { Group, CreateGroupData, UpdateGroupData } from "../types/api";
+import { Group, CreateGroupData, UpdateGroupData, Round } from "../types/api";
+import { roundKeys } from "./useRounds";
 
 // Query Keys
 export const groupKeys = {
@@ -11,29 +12,57 @@ export const groupKeys = {
   detail: (id: string) => [...groupKeys.details(), id] as const,
 };
 
+// Utility function to prefetch related data
+const prefetchRelatedData = (queryClient: any, group: Group) => {
+  // Set individual group data in cache
+  queryClient.setQueryData(groupKeys.detail(group.id), group);
+
+  // Set individual round data in cache for each round
+  group.rounds?.forEach((round) => {
+    queryClient.setQueryData(roundKeys.detail(round.id), round);
+  });
+};
+
 // Hooks
 export const useGroups = () => {
   const api = useApi();
+  const queryClient = useQueryClient();
 
   return useQuery({
     queryKey: groupKeys.list(),
     queryFn: async () => {
       const response = await api.get("/api/groups");
-      return response.data as Group[];
+      const groups = response.data as Group[];
+
+      // Prefetch individual group and round data into cache
+      groups.forEach((group) => {
+        prefetchRelatedData(queryClient, group);
+      });
+
+      return groups;
     },
+    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
   });
 };
 
-export const useGroup = (id: string) => {
+export const useGroup = (id: string, initialData?: Group) => {
   const api = useApi();
+  const queryClient = useQueryClient();
 
   return useQuery({
     queryKey: groupKeys.detail(id),
     queryFn: async () => {
       const response = await api.get(`/api/groups/${id}`);
-      return response.data as Group;
+      const group = response.data as Group;
+
+      // Prefetch individual round data into cache
+      prefetchRelatedData(queryClient, group);
+
+      return group;
     },
     enabled: !!id,
+    initialData, // Use provided initial data to avoid loading states
+    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
   });
 };
 
@@ -46,7 +75,9 @@ export const useCreateGroup = () => {
       const response = await api.post("/api/groups", data);
       return response.data as Group;
     },
-    onSuccess: () => {
+    onSuccess: (newGroup) => {
+      // Prefetch the new group's data
+      prefetchRelatedData(queryClient, newGroup);
       // Invalidate and refetch groups list
       queryClient.invalidateQueries({ queryKey: groupKeys.lists() });
     },
@@ -63,8 +94,8 @@ export const useUpdateGroup = () => {
       return response.data as Group;
     },
     onSuccess: (updatedGroup) => {
-      // Update the specific group in cache
-      queryClient.setQueryData(groupKeys.detail(updatedGroup.id), updatedGroup);
+      // Update related data in cache
+      prefetchRelatedData(queryClient, updatedGroup);
       // Invalidate groups list to refresh any cached data
       queryClient.invalidateQueries({ queryKey: groupKeys.lists() });
     },

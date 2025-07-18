@@ -36,9 +36,10 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
   const { user } = useAuth();
   const [votingState, setVotingState] = useState<Record<string, number>>({});
 
-  // Fetch fresh round data using the hook
+  // Fetch fresh round data using the hook with initial data to avoid loading screen
   const { data: round = initialRound, isLoading: isLoadingRound } = useRound(
-    initialRound.id
+    initialRound.id,
+    initialRound // Pass initial data to avoid refetch
   );
 
   const createVoteMutation = useCreateVote();
@@ -48,8 +49,7 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
   const isLoading =
     createVoteMutation.isPending ||
     updateVoteMutation.isPending ||
-    deleteVoteMutation.isPending ||
-    isLoadingRound;
+    deleteVoteMutation.isPending;
 
   // Use the group prop instead of round.group
   const isAdmin = group?.admin?.id === user?.id;
@@ -262,8 +262,8 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
     );
   };
 
-  // Show loading state while fetching round data
-  if (isLoadingRound) {
+  // Show loading state while fetching round data - now rarely needed since we use initialData
+  if (isLoadingRound && !round) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>

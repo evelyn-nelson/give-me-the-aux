@@ -31,13 +31,14 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"rounds" | "members">("rounds");
 
-  // Fetch fresh group data using the hook
+  // Fetch fresh group data using the hook with initial data to avoid loading screen
   const { data: group = initialGroup, isLoading: isLoadingGroup } = useGroup(
-    initialGroup.id
+    initialGroup.id,
+    initialGroup // Pass initial data to avoid refetch
   );
 
   const deleteGroupMutation = useDeleteGroup();
-  const isLoading = deleteGroupMutation.isPending || isLoadingGroup;
+  const isLoading = deleteGroupMutation.isPending;
 
   // Use the group data, fallback to initialGroup if group is undefined
   const currentGroup = group || initialGroup;
@@ -153,23 +154,6 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
       </View>
     </View>
   );
-
-  // Show loading state while fetching group data
-  if (isLoadingGroup) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onBack}>
-            <Text style={styles.backText}>‹ Back</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#FFB000" />
-          <Text style={styles.loadingText}>Loading group...</Text>
-        </View>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>

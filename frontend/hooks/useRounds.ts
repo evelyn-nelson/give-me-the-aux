@@ -3,6 +3,7 @@ import { useApi } from "./useApi";
 import { groupKeys } from "./useGroups";
 import {
   Round,
+  Group,
   CreateRoundData,
   UpdateRoundData,
   ReorderRoundsData,
@@ -28,10 +29,11 @@ export const useRounds = (groupId: string) => {
       return response.data as Round[];
     },
     enabled: !!groupId,
+    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
   });
 };
 
-export const useRound = (id: string) => {
+export const useRound = (id: string, initialData?: Round) => {
   const api = useApi();
 
   return useQuery({
@@ -41,6 +43,8 @@ export const useRound = (id: string) => {
       return response.data as Round;
     },
     enabled: !!id,
+    initialData, // Use provided initial data to avoid loading states
+    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
   });
 };
 
@@ -54,6 +58,9 @@ export const useCreateRound = () => {
       return response.data as Round;
     },
     onSuccess: (newRound) => {
+      // Set the new round in cache immediately
+      queryClient.setQueryData(roundKeys.detail(newRound.id), newRound);
+
       // Invalidate rounds list for the group
       queryClient.invalidateQueries({
         queryKey: roundKeys.list(newRound.group.id),
@@ -78,8 +85,24 @@ export const useUpdateRound = () => {
       return response.data as Round;
     },
     onSuccess: (updatedRound) => {
-      // Update the specific round in cache
+      // Update the specific round in cache immediately
       queryClient.setQueryData(roundKeys.detail(updatedRound.id), updatedRound);
+
+      // Optimistically update the round in the group cache as well
+      queryClient.setQueryData(
+        groupKeys.detail(updatedRound.group.id),
+        (oldGroup: Group | undefined) => {
+          if (!oldGroup) return oldGroup;
+          return {
+            ...oldGroup,
+            rounds:
+              oldGroup.rounds?.map((round: Round) =>
+                round.id === updatedRound.id ? updatedRound : round
+              ) || [],
+          };
+        }
+      );
+
       // Invalidate rounds list for the group
       queryClient.invalidateQueries({
         queryKey: roundKeys.list(updatedRound.group.id),

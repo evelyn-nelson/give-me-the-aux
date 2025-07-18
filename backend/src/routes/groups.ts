@@ -210,7 +210,6 @@ router.get(
             orderBy: {
               createdAt: "desc",
             },
-            take: 5, // Limit to recent rounds
           },
           _count: {
             select: {
@@ -477,9 +476,46 @@ router.delete(
           .json({ error: "Group not found or you are not the admin" });
       }
 
-      // Delete the group (cascade will handle related records)
-      await prisma.group.delete({
-        where: { id: id },
+      await prisma.$transaction(async (tx) => {
+        await tx.vote.deleteMany({
+          where: {
+            submission: {
+              round: {
+                groupId: id,
+              },
+            },
+          },
+        });
+
+        await tx.submission.deleteMany({
+          where: {
+            round: {
+              groupId: id,
+            },
+          },
+        });
+
+        await tx.round.deleteMany({
+          where: {
+            groupId: id,
+          },
+        });
+
+        await tx.groupMember.deleteMany({
+          where: {
+            groupId: id,
+          },
+        });
+
+        await tx.message.deleteMany({
+          where: {
+            groupId: id,
+          },
+        });
+
+        await tx.group.delete({
+          where: { id: id },
+        });
       });
 
       res.json({ data: { message: "Group deleted successfully" } });
