@@ -14,7 +14,7 @@ export const LoginScreen: React.FC = () => {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#1DB954" />
+        <ActivityIndicator size="large" color="#FFB000" />
         <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: "bold",
     marginBottom: 10,
-    color: "#1DB954",
+    color: "#FFB000",
   },
   subtitle: {
     fontSize: 16,
@@ -53,14 +53,14 @@ const styles = StyleSheet.create({
     color: "#B3B3B3",
   },
   button: {
-    backgroundColor: "#1DB954",
+    backgroundColor: "#FFB000",
     paddingHorizontal: 30,
     paddingVertical: 15,
     borderRadius: 25,
     minWidth: 200,
   },
   buttonText: {
-    color: "white",
+    color: "#191414",
     fontSize: 16,
     fontWeight: "600",
     textAlign: "center",

@@ -7,7 +7,7 @@ import {
   SafeAreaView,
 } from "react-native";
 import { UserProfileScreen } from "./UserProfileScreen";
-import { UserGroupsScreen } from "./UserGroupsScreen";
+import { GroupsNavigator } from "./GroupsNavigator";
 
 type TabType = "profile" | "groups";
 
@@ -30,7 +30,7 @@ export const MainNavigator: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        {activeTab === "profile" ? <UserProfileScreen /> : <UserGroupsScreen />}
+        {activeTab === "profile" ? <UserProfileScreen /> : <GroupsNavigator />}
       </View>
 
       <View style={styles.tabBar}>
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   activeTabLabel: {
-    color: "#1DB954",
+    color: "#FFB000",
     fontWeight: "600",
   },
 });

@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
   welcomeText: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "#1DB954",
+    color: "#FFB000",
     marginBottom: 5,
   },
   subtitle: {
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: "#1DB954",
+    backgroundColor: "#FFB000",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 15,
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#1DB954",
+    color: "#FFB000",
     marginBottom: 5,
   },
   statLabel: {
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
     marginRight: 15,
   },
   backButtonText: {
-    color: "#1DB954",
+    color: "#FFB000",
     fontSize: 16,
     fontWeight: "600",
   },

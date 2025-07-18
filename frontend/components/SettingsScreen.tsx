@@ -117,7 +117,7 @@ export const SettingsScreen: React.FC = () => {
           <Switch
             value={notificationsEnabled}
             onValueChange={setNotificationsEnabled}
-            trackColor={{ false: "#404040", true: "#1DB954" }}
+            trackColor={{ false: "#404040", true: "#FFB000" }}
             thumbColor={notificationsEnabled ? "#fff" : "#f4f3f4"}
           />
         )}
@@ -128,7 +128,7 @@ export const SettingsScreen: React.FC = () => {
           <Switch
             value={darkModeEnabled}
             onValueChange={setDarkModeEnabled}
-            trackColor={{ false: "#404040", true: "#1DB954" }}
+            trackColor={{ false: "#404040", true: "#FFB000" }}
             thumbColor={darkModeEnabled ? "#fff" : "#f4f3f4"}
           />
         )}
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "#1DB954",
+    color: "#FFB000",
     marginBottom: 5,
   },
   headerSubtitle: {
