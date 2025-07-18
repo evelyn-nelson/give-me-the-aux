@@ -4,6 +4,7 @@ import helmet from "helmet";
 import { PrismaClient } from "@prisma/client";
 import authRoutes from "./routes/auth";
 import spotifyRoutes from "./routes/spotify";
+import groupRoutes from "./routes/groups";
 import { TokenCleanupService } from "./services/tokenCleanup";
 
 // Load environment variables
@@ -23,6 +24,7 @@ app.use(express.json());
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/spotify", spotifyRoutes);
+app.use("/api/groups", groupRoutes);
 
 // Health check
 app.get("/health", (req, res) => {
@@ -35,6 +37,5 @@ app.get("/health", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 
-  // Start the token cleanup cron job
   TokenCleanupService.startCleanupJob();
 });

@@ -84,3 +84,26 @@ export const userSpecificLimiter = rateLimit({
     });
   },
 });
+
+// Rate limiter for normal API routes (groups, rounds, etc.)
+export const apiRoutesLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200, // limit each user to 200 requests per window
+  keyGenerator: (req: AuthRequest) => {
+    return req.user?.id || req.ip || "anonymous";
+  },
+  message: {
+    error:
+      "Too many requests from this user, please try again after 15 minutes",
+    code: "RATE_LIMIT_EXCEEDED",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req: AuthRequest, res: Response) => {
+    res.status(429).json({
+      error:
+        "Too many requests from this user, please try again after 15 minutes",
+      code: "RATE_LIMIT_EXCEEDED",
+    });
+  },
+});
