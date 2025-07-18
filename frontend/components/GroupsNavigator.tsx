@@ -5,6 +5,7 @@ import { CreateGroupScreen } from "./CreateGroupScreen";
 import { GroupDetailScreen } from "./GroupDetailScreen";
 import { CreateRoundScreen } from "./CreateRoundScreen";
 import { RoundDetailScreen } from "./RoundDetailScreen";
+import { EditGroupScreen } from "./EditGroupScreen";
 import { Group, Round } from "../types/api";
 
 type ScreenType =
@@ -12,7 +13,8 @@ type ScreenType =
   | "create-group"
   | "group-detail"
   | "create-round"
-  | "round-detail";
+  | "round-detail"
+  | "edit-group";
 
 interface ScreenState {
   screen: ScreenType;
@@ -20,6 +22,7 @@ interface ScreenState {
   selectedRound?: Round;
   createRoundGroupId?: string;
   createRoundGroupName?: string;
+  editingGroup?: Group;
 }
 
 export const GroupsNavigator: React.FC = () => {
@@ -47,6 +50,7 @@ export const GroupsNavigator: React.FC = () => {
       screen: "create-round",
       createRoundGroupId: groupId,
       createRoundGroupName: groupName,
+      selectedGroup: screenState.selectedGroup, // Preserve the current group
     });
   };
 
@@ -62,6 +66,18 @@ export const GroupsNavigator: React.FC = () => {
     navigateToGroupList();
   };
 
+  const handleGroupUpdated = (updatedGroup: Group) => {
+    // Update the selected group with the updated data
+    if (screenState.selectedGroup?.id === updatedGroup.id) {
+      setScreenState((prev) => ({
+        ...prev,
+        selectedGroup: updatedGroup,
+      }));
+    }
+    // Navigate back to group detail with the updated group
+    navigateToGroupDetail(updatedGroup);
+  };
+
   const handleRoundCreated = () => {
     // TODO: Refresh group detail
     if (screenState.selectedGroup) {
@@ -71,9 +87,16 @@ export const GroupsNavigator: React.FC = () => {
     }
   };
 
+  const navigateToEditGroup = (group: Group) => {
+    setScreenState({
+      screen: "edit-group",
+      editingGroup: group,
+      selectedGroup: screenState.selectedGroup, // Preserve the current group
+    });
+  };
+
   const handleGroupEdited = (group: Group) => {
-    // TODO: Navigate to edit group screen (not implemented yet)
-    console.log("Edit group:", group.name);
+    navigateToEditGroup(group);
   };
 
   const handleRoundEdited = (round: Round) => {
@@ -130,10 +153,25 @@ export const GroupsNavigator: React.FC = () => {
             groupName={screenState.createRoundGroupName}
             onRoundCreated={handleRoundCreated}
             onCancel={() => {
+              // Always go back to the group detail since we're creating a round for that group
               if (screenState.selectedGroup) {
                 navigateToGroupDetail(screenState.selectedGroup);
               } else {
-                navigateToGroupList();
+                // Fallback: create a minimal group object to navigate back
+                navigateToGroupDetail({
+                  id: screenState.createRoundGroupId!,
+                  name: screenState.createRoundGroupName!,
+                  adminId: "", // We don't have this info, but it's not used for navigation
+                  createdAt: new Date().toISOString(),
+                  submissionDurationDays: 3,
+                  votingDurationDays: 2,
+                  votesPerUserPerRound: 10,
+                  maxVotesPerSong: 3,
+                  admin: { id: "", displayName: "" },
+                  members: [],
+                  rounds: [],
+                  _count: { members: 0, rounds: 0 },
+                });
               }
             }}
           />
@@ -153,6 +191,38 @@ export const GroupsNavigator: React.FC = () => {
             }}
             onSubmitSongPress={handleSubmitSong}
             onEditRoundPress={handleRoundEdited}
+          />
+        );
+
+      case "edit-group":
+        if (!screenState.editingGroup) return null;
+        return (
+          <EditGroupScreen
+            group={screenState.editingGroup}
+            onGroupUpdated={handleGroupUpdated}
+            onCancel={() => {
+              // Always go back to the group detail since we're editing that group
+              if (screenState.selectedGroup) {
+                navigateToGroupDetail(screenState.selectedGroup);
+              } else {
+                // Fallback: create a minimal group object to navigate back
+                const editingGroup = screenState.editingGroup!;
+                navigateToGroupDetail({
+                  id: editingGroup.id,
+                  name: editingGroup.name,
+                  adminId: editingGroup.adminId,
+                  createdAt: editingGroup.createdAt,
+                  submissionDurationDays: editingGroup.submissionDurationDays,
+                  votingDurationDays: editingGroup.votingDurationDays,
+                  votesPerUserPerRound: editingGroup.votesPerUserPerRound,
+                  maxVotesPerSong: editingGroup.maxVotesPerSong,
+                  admin: editingGroup.admin,
+                  members: editingGroup.members,
+                  rounds: editingGroup.rounds,
+                  _count: editingGroup._count,
+                });
+              }
+            }}
           />
         );
 

@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { LoginScreen } from "./components/LoginScreen";
 import { MainNavigator } from "./components/MainNavigator";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 const AppContent: React.FC = () => {
   const { user, isLoading } = useAuth();
@@ -41,11 +42,13 @@ export default function App() {
   });
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </QueryClientProvider>
+    <SafeAreaProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </QueryClientProvider>
+    </SafeAreaProvider>
   );
 }
 

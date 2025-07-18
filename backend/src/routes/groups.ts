@@ -375,6 +375,24 @@ router.patch(
               },
             },
           },
+          rounds: {
+            select: {
+              id: true,
+              theme: true,
+              status: true,
+              startDate: true,
+              endDate: true,
+            },
+            orderBy: {
+              createdAt: "desc",
+            },
+          },
+          _count: {
+            select: {
+              members: true,
+              rounds: true,
+            },
+          },
         },
       });
 

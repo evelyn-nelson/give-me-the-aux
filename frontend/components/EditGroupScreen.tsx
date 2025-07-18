@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,29 +8,40 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
-import { useCreateGroup } from "../hooks/useGroups";
+import { useUpdateGroup } from "../hooks/useGroups";
 import { FormWrapper } from "./FormWrapper";
+import { Group } from "../types/api";
 
-interface CreateGroupScreenProps {
-  onGroupCreated: () => void;
+interface EditGroupScreenProps {
+  group: Group;
+  onGroupUpdated: (updatedGroup: Group) => void;
   onCancel: () => void;
 }
 
-export const CreateGroupScreen: React.FC<CreateGroupScreenProps> = ({
-  onGroupCreated,
+export const EditGroupScreen: React.FC<EditGroupScreenProps> = ({
+  group,
+  onGroupUpdated,
   onCancel,
 }) => {
   const [formData, setFormData] = useState({
-    name: "",
-    submissionDurationDays: 3,
-    votingDurationDays: 2,
-    votesPerUserPerRound: 10,
-    maxVotesPerSong: 3,
+    name: group.name,
+    submissionDurationDays: group.submissionDurationDays,
+    votingDurationDays: group.votingDurationDays,
+    votesPerUserPerRound: group.votesPerUserPerRound,
+    maxVotesPerSong: group.maxVotesPerSong,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const createGroupMutation = useCreateGroup();
-  const isLoading = createGroupMutation.isPending;
+  const updateGroupMutation = useUpdateGroup();
+  const isLoading = updateGroupMutation.isPending;
+
+  // Check if any fields have changed from the original group data
+  const hasChanges =
+    formData.name !== group.name ||
+    formData.submissionDurationDays !== group.submissionDurationDays ||
+    formData.votingDurationDays !== group.votingDurationDays ||
+    formData.votesPerUserPerRound !== group.votesPerUserPerRound ||
+    formData.maxVotesPerSong !== group.maxVotesPerSong;
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -73,16 +84,19 @@ export const CreateGroupScreen: React.FC<CreateGroupScreenProps> = ({
     }
 
     try {
-      await createGroupMutation.mutateAsync({
-        name: formData.name.trim(),
-        submissionDurationDays: formData.submissionDurationDays,
-        votingDurationDays: formData.votingDurationDays,
-        votesPerUserPerRound: formData.votesPerUserPerRound,
-        maxVotesPerSong: formData.maxVotesPerSong,
+      const updatedGroup = await updateGroupMutation.mutateAsync({
+        id: group.id,
+        data: {
+          name: formData.name.trim(),
+          submissionDurationDays: formData.submissionDurationDays,
+          votingDurationDays: formData.votingDurationDays,
+          votesPerUserPerRound: formData.votesPerUserPerRound,
+          maxVotesPerSong: formData.maxVotesPerSong,
+        },
       });
-      onGroupCreated();
+      onGroupUpdated(updatedGroup);
     } catch (error) {
-      Alert.alert("Error", "Failed to create group. Please try again.");
+      Alert.alert("Error", "Failed to update group. Please try again.");
     }
   };
 
@@ -94,7 +108,7 @@ export const CreateGroupScreen: React.FC<CreateGroupScreenProps> = ({
   };
 
   return (
-    <FormWrapper title="Create Group" onClose={onCancel}>
+    <FormWrapper title="Edit Group" onClose={onCancel}>
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Group Details</Text>
 
@@ -207,16 +221,18 @@ export const CreateGroupScreen: React.FC<CreateGroupScreenProps> = ({
       <View style={styles.footer}>
         <TouchableOpacity
           style={[
-            styles.createButton,
-            isLoading && styles.createButtonDisabled,
+            styles.updateButton,
+            (isLoading || !hasChanges) && styles.updateButtonDisabled,
           ]}
           onPress={handleSubmit}
-          disabled={isLoading}
+          disabled={isLoading || !hasChanges}
         >
           {isLoading ? (
             <ActivityIndicator color="#191414" size="small" />
           ) : (
-            <Text style={styles.createButtonText}>Create Group</Text>
+            <Text style={styles.updateButtonText}>
+              {hasChanges ? "Update Group" : "No Changes"}
+            </Text>
           )}
         </TouchableOpacity>
       </View>
@@ -277,16 +293,16 @@ const styles = StyleSheet.create({
     borderTopColor: "#404040",
     marginTop: 24,
   },
-  createButton: {
+  updateButton: {
     backgroundColor: "#FFB000",
     paddingVertical: 14,
     borderRadius: 25,
     alignItems: "center",
   },
-  createButtonDisabled: {
+  updateButtonDisabled: {
     opacity: 0.6,
   },
-  createButtonText: {
+  updateButtonText: {
     color: "#191414",
     fontSize: 16,
     fontWeight: "600",

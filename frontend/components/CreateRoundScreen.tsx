@@ -5,11 +5,11 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
   Alert,
   ActivityIndicator,
 } from "react-native";
 import { useCreateRound } from "../hooks/useRounds";
+import { FormWrapper } from "./FormWrapper";
 
 interface CreateRoundScreenProps {
   groupId: string;
@@ -126,160 +126,145 @@ export const CreateRoundScreen: React.FC<CreateRoundScreenProps> = ({
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onCancel}>
-          <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Create Round</Text>
-        <View style={styles.placeholder} />
+    <FormWrapper title="Create Round" onClose={onCancel}>
+      <View style={styles.section}>
+        <Text style={styles.groupName}>in {groupName}</Text>
       </View>
 
-      <ScrollView style={styles.form} showsVerticalScrollIndicator={false}>
-        <View style={styles.section}>
-          <Text style={styles.groupName}>in {groupName}</Text>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Round Details</Text>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Theme *</Text>
+          <TextInput
+            style={[styles.input, errors.theme && styles.inputError]}
+            value={formData.theme}
+            onChangeText={(text) => updateFormData("theme", text)}
+            placeholder="e.g., 'Songs that make you happy'"
+            placeholderTextColor="#666"
+            maxLength={100}
+          />
+          {errors.theme && <Text style={styles.errorText}>{errors.theme}</Text>}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Round Details</Text>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Theme *</Text>
-            <TextInput
-              style={[styles.input, errors.theme && styles.inputError]}
-              value={formData.theme}
-              onChangeText={(text) => updateFormData("theme", text)}
-              placeholder="e.g., 'Songs that make you happy'"
-              placeholderTextColor="#666"
-              maxLength={100}
-            />
-            {errors.theme && (
-              <Text style={styles.errorText}>{errors.theme}</Text>
-            )}
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Description (optional)</Text>
-            <TextInput
-              style={[styles.textArea, errors.description && styles.inputError]}
-              value={formData.description}
-              onChangeText={(text) => updateFormData("description", text)}
-              placeholder="Add more details about this round..."
-              placeholderTextColor="#666"
-              multiline
-              numberOfLines={3}
-              maxLength={300}
-            />
-            {errors.description && (
-              <Text style={styles.errorText}>{errors.description}</Text>
-            )}
-          </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Description (optional)</Text>
+          <TextInput
+            style={[styles.textArea, errors.description && styles.inputError]}
+            value={formData.description}
+            onChangeText={(text) => updateFormData("description", text)}
+            placeholder="Add more details about this round..."
+            placeholderTextColor="#666"
+            multiline
+            numberOfLines={3}
+            maxLength={300}
+          />
+          {errors.description && (
+            <Text style={styles.errorText}>{errors.description}</Text>
+          )}
         </View>
+      </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Timeline</Text>
-          <Text style={styles.sectionSubtitle}>
-            Set when the round starts, when voting begins, and when it ends
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Timeline</Text>
+        <Text style={styles.sectionSubtitle}>
+          Set when the round starts, when voting begins, and when it ends
+        </Text>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Round Start Date *</Text>
+          <TextInput
+            style={[styles.input, errors.startDate && styles.inputError]}
+            value={formData.startDate}
+            onChangeText={(text) => updateFormData("startDate", text)}
+            placeholder="YYYY-MM-DD"
+            placeholderTextColor="#666"
+          />
+          {errors.startDate && (
+            <Text style={styles.errorText}>{errors.startDate}</Text>
+          )}
+          <Text style={styles.helpText}>
+            When members can start submitting songs
           </Text>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Round Start Date *</Text>
-            <TextInput
-              style={[styles.input, errors.startDate && styles.inputError]}
-              value={formData.startDate}
-              onChangeText={(text) => updateFormData("startDate", text)}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="#666"
-            />
-            {errors.startDate && (
-              <Text style={styles.errorText}>{errors.startDate}</Text>
-            )}
-            <Text style={styles.helpText}>
-              When members can start submitting songs
-            </Text>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Voting Start Date *</Text>
-            <TextInput
-              style={[
-                styles.input,
-                errors.votingStartDate && styles.inputError,
-              ]}
-              value={formData.votingStartDate}
-              onChangeText={(text) => updateFormData("votingStartDate", text)}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="#666"
-            />
-            {errors.votingStartDate && (
-              <Text style={styles.errorText}>{errors.votingStartDate}</Text>
-            )}
-            <Text style={styles.helpText}>
-              When voting opens and submissions close
-            </Text>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Round End Date *</Text>
-            <TextInput
-              style={[styles.input, errors.endDate && styles.inputError]}
-              value={formData.endDate}
-              onChangeText={(text) => updateFormData("endDate", text)}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="#666"
-            />
-            {errors.endDate && (
-              <Text style={styles.errorText}>{errors.endDate}</Text>
-            )}
-            <Text style={styles.helpText}>
-              When voting closes and round completes
-            </Text>
-          </View>
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.timelinePreview}>
-            <Text style={styles.timelineTitle}>Timeline Preview</Text>
-            <View style={styles.timelineItem}>
-              <View
-                style={[styles.timelineDot, { backgroundColor: "#FFB000" }]}
-              />
-              <View style={styles.timelineContent}>
-                <Text style={styles.timelineLabel}>Submissions Open</Text>
-                <Text style={styles.timelineDate}>
-                  {formData.startDate
-                    ? new Date(formData.startDate).toLocaleDateString()
-                    : "Start date"}
-                </Text>
-              </View>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Voting Start Date *</Text>
+          <TextInput
+            style={[styles.input, errors.votingStartDate && styles.inputError]}
+            value={formData.votingStartDate}
+            onChangeText={(text) => updateFormData("votingStartDate", text)}
+            placeholder="YYYY-MM-DD"
+            placeholderTextColor="#666"
+          />
+          {errors.votingStartDate && (
+            <Text style={styles.errorText}>{errors.votingStartDate}</Text>
+          )}
+          <Text style={styles.helpText}>
+            When voting opens and submissions close
+          </Text>
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Round End Date *</Text>
+          <TextInput
+            style={[styles.input, errors.endDate && styles.inputError]}
+            value={formData.endDate}
+            onChangeText={(text) => updateFormData("endDate", text)}
+            placeholder="YYYY-MM-DD"
+            placeholderTextColor="#666"
+          />
+          {errors.endDate && (
+            <Text style={styles.errorText}>{errors.endDate}</Text>
+          )}
+          <Text style={styles.helpText}>
+            When voting closes and round completes
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <View style={styles.timelinePreview}>
+          <Text style={styles.timelineTitle}>Timeline Preview</Text>
+          <View style={styles.timelineItem}>
+            <View
+              style={[styles.timelineDot, { backgroundColor: "#FFB000" }]}
+            />
+            <View style={styles.timelineContent}>
+              <Text style={styles.timelineLabel}>Submissions Open</Text>
+              <Text style={styles.timelineDate}>
+                {formData.startDate
+                  ? new Date(formData.startDate).toLocaleDateString()
+                  : "Start date"}
+              </Text>
             </View>
-            <View style={styles.timelineItem}>
-              <View
-                style={[styles.timelineDot, { backgroundColor: "#FF8C00" }]}
-              />
-              <View style={styles.timelineContent}>
-                <Text style={styles.timelineLabel}>Voting Opens</Text>
-                <Text style={styles.timelineDate}>
-                  {formData.votingStartDate
-                    ? new Date(formData.votingStartDate).toLocaleDateString()
-                    : "Voting start date"}
-                </Text>
-              </View>
+          </View>
+          <View style={styles.timelineItem}>
+            <View
+              style={[styles.timelineDot, { backgroundColor: "#FF8C00" }]}
+            />
+            <View style={styles.timelineContent}>
+              <Text style={styles.timelineLabel}>Voting Opens</Text>
+              <Text style={styles.timelineDate}>
+                {formData.votingStartDate
+                  ? new Date(formData.votingStartDate).toLocaleDateString()
+                  : "Voting start date"}
+              </Text>
             </View>
-            <View style={styles.timelineItem}>
-              <View style={[styles.timelineDot, { backgroundColor: "#666" }]} />
-              <View style={styles.timelineContent}>
-                <Text style={styles.timelineLabel}>Round Ends</Text>
-                <Text style={styles.timelineDate}>
-                  {formData.endDate
-                    ? new Date(formData.endDate).toLocaleDateString()
-                    : "End date"}
-                </Text>
-              </View>
+          </View>
+          <View style={styles.timelineItem}>
+            <View style={[styles.timelineDot, { backgroundColor: "#666" }]} />
+            <View style={styles.timelineContent}>
+              <Text style={styles.timelineLabel}>Round Ends</Text>
+              <Text style={styles.timelineDate}>
+                {formData.endDate
+                  ? new Date(formData.endDate).toLocaleDateString()
+                  : "End date"}
+              </Text>
             </View>
           </View>
         </View>
-      </ScrollView>
+      </View>
 
       <View style={styles.footer}>
         <TouchableOpacity
@@ -297,41 +282,11 @@ export const CreateRoundScreen: React.FC<CreateRoundScreenProps> = ({
           )}
         </TouchableOpacity>
       </View>
-    </View>
+    </FormWrapper>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#191414",
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#404040",
-  },
-  cancelText: {
-    fontSize: 16,
-    color: "#FFB000",
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "white",
-  },
-  placeholder: {
-    width: 50,
-  },
-  form: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
   section: {
     marginTop: 24,
   },
@@ -432,9 +387,10 @@ const styles = StyleSheet.create({
     color: "#B3B3B3",
   },
   footer: {
-    padding: 20,
+    paddingTop: 20,
     borderTopWidth: 1,
     borderTopColor: "#404040",
+    marginTop: 24,
   },
   createButton: {
     backgroundColor: "#FFB000",
