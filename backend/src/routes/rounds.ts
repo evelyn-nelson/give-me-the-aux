@@ -32,38 +32,6 @@ router.post(
         return res.status(400).json({ error: "Theme is required" });
       }
 
-      if (!startDate || !endDate || !votingStartDate) {
-        return res.status(400).json({
-          error: "Start date, end date, and voting start date are required",
-        });
-      }
-
-      // Parse dates
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      const votingStart = new Date(votingStartDate);
-
-      // Validate dates
-      if (
-        isNaN(start.getTime()) ||
-        isNaN(end.getTime()) ||
-        isNaN(votingStart.getTime())
-      ) {
-        return res.status(400).json({ error: "Invalid date format" });
-      }
-
-      if (start >= end) {
-        return res
-          .status(400)
-          .json({ error: "Start date must be before end date" });
-      }
-
-      if (votingStart < start || votingStart >= end) {
-        return res.status(400).json({
-          error: "Voting start date must be between start and end dates",
-        });
-      }
-
       // Check if user is admin of the group
       const group = await prisma.group.findFirst({
         where: {
@@ -78,14 +46,84 @@ router.post(
           .json({ error: "Group not found or you are not the admin" });
       }
 
+      // Check if there's already an active round in this group
+      const activeRound = await prisma.round.findFirst({
+        where: {
+          groupId: groupId,
+          status: {
+            in: ["SUBMISSION", "VOTING"],
+          },
+        },
+      });
+
+      if (activeRound) {
+        return res
+          .status(400)
+          .json({ error: "There is already an active round in this group" });
+      }
+
+      // Get the last round to determine the start date for the new round
+      const lastRound = await prisma.round.findFirst({
+        where: { groupId: groupId },
+        orderBy: { order: "desc" },
+      });
+
+      let roundStartDate: Date;
+      let roundEndDate: Date;
+      let roundVotingStartDate: Date;
+
+      if (!lastRound) {
+        // First round - require only start date
+        if (!startDate) {
+          return res.status(400).json({
+            error: "Start date is required for the first round",
+          });
+        }
+
+        // Parse start date
+        roundStartDate = new Date(startDate);
+
+        // Validate start date
+        if (isNaN(roundStartDate.getTime())) {
+          return res.status(400).json({ error: "Invalid start date format" });
+        }
+
+        // Calculate voting start date and end date based on group settings
+        roundVotingStartDate = new Date(roundStartDate);
+        roundVotingStartDate.setDate(
+          roundVotingStartDate.getDate() + group.submissionDurationDays
+        );
+
+        roundEndDate = new Date(roundStartDate);
+        roundEndDate.setDate(
+          roundEndDate.getDate() +
+            group.submissionDurationDays +
+            group.votingDurationDays
+        );
+      } else {
+        // Subsequent rounds - calculate dates automatically based on group settings
+        // Start date = end date of previous round
+        roundStartDate = new Date(lastRound.endDate);
+
+        // End date = start date + submission duration + voting duration
+        roundEndDate = new Date(roundStartDate);
+        roundEndDate.setDate(
+          roundEndDate.getDate() +
+            group.submissionDurationDays +
+            group.votingDurationDays
+        );
+
+        // Voting start date = start date + submission duration
+        roundVotingStartDate = new Date(roundStartDate);
+        roundVotingStartDate.setDate(
+          roundVotingStartDate.getDate() + group.submissionDurationDays
+        );
+      }
+
       // Determine the order for the new round
       let roundOrder = order;
       if (!roundOrder) {
         // If no order specified, find the highest order and add 1
-        const lastRound = await prisma.round.findFirst({
-          where: { groupId: groupId },
-          orderBy: { order: "desc" },
-        });
         roundOrder = lastRound ? lastRound.order + 1 : 1;
       } else {
         // Validate that the order is positive
@@ -112,31 +150,15 @@ router.post(
         }
       }
 
-      // Check if there's already an active round in this group
-      const activeRound = await prisma.round.findFirst({
-        where: {
-          groupId: groupId,
-          status: {
-            in: ["SUBMISSION", "VOTING"],
-          },
-        },
-      });
-
-      if (activeRound) {
-        return res
-          .status(400)
-          .json({ error: "There is already an active round in this group" });
-      }
-
       const round = await prisma.round.create({
         data: {
           groupId: groupId,
           theme: theme.trim(),
           description: description?.trim() || null,
           order: roundOrder,
-          startDate: start,
-          endDate: end,
-          votingStartDate: votingStart,
+          startDate: roundStartDate,
+          endDate: roundEndDate,
+          votingStartDate: roundVotingStartDate,
           status: "SUBMISSION",
         },
         include: {

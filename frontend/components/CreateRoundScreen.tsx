@@ -8,7 +8,7 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
-import { useCreateRound } from "../hooks/useRounds";
+import { useCreateRound, useRounds } from "../hooks/useRounds";
 import { FormWrapper } from "./FormWrapper";
 
 interface CreateRoundScreenProps {
@@ -28,13 +28,15 @@ export const CreateRoundScreen: React.FC<CreateRoundScreenProps> = ({
     theme: "",
     description: "",
     startDate: new Date().toISOString().split("T")[0],
-    endDate: "",
-    votingStartDate: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const createRoundMutation = useCreateRound();
+  const { data: existingRounds } = useRounds(groupId);
   const isLoading = createRoundMutation.isPending;
+
+  // Check if this is the first round
+  const isFirstRound = !existingRounds || existingRounds.length === 0;
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -45,37 +47,10 @@ export const CreateRoundScreen: React.FC<CreateRoundScreenProps> = ({
       newErrors.theme = "Theme must be at least 3 characters";
     }
 
-    if (!formData.startDate) {
-      newErrors.startDate = "Start date is required";
-    }
-
-    if (!formData.endDate) {
-      newErrors.endDate = "End date is required";
-    }
-
-    if (!formData.votingStartDate) {
-      newErrors.votingStartDate = "Voting start date is required";
-    }
-
-    if (formData.startDate && formData.endDate) {
-      const start = new Date(formData.startDate);
-      const end = new Date(formData.endDate);
-      if (start >= end) {
-        newErrors.endDate = "End date must be after start date";
-      }
-    }
-
-    if (formData.startDate && formData.votingStartDate && formData.endDate) {
-      const start = new Date(formData.startDate);
-      const votingStart = new Date(formData.votingStartDate);
-      const end = new Date(formData.endDate);
-
-      if (votingStart < start) {
-        newErrors.votingStartDate = "Voting start must be after round start";
-      }
-
-      if (votingStart >= end) {
-        newErrors.votingStartDate = "Voting start must be before round end";
+    // Only validate start date for the first round
+    if (isFirstRound) {
+      if (!formData.startDate) {
+        newErrors.startDate = "Start date is required";
       }
     }
 
@@ -89,14 +64,18 @@ export const CreateRoundScreen: React.FC<CreateRoundScreenProps> = ({
     }
 
     try {
-      await createRoundMutation.mutateAsync({
+      const submitData: any = {
         groupId,
         theme: formData.theme.trim(),
         description: formData.description.trim() || undefined,
-        startDate: new Date(formData.startDate).toISOString(),
-        endDate: new Date(formData.endDate).toISOString(),
-        votingStartDate: new Date(formData.votingStartDate).toISOString(),
-      });
+      };
+
+      // Only include start date for the first round
+      if (isFirstRound) {
+        submitData.startDate = new Date(formData.startDate).toISOString();
+      }
+
+      await createRoundMutation.mutateAsync(submitData);
       onRoundCreated();
     } catch (error) {
       Alert.alert("Error", "Failed to create round. Please try again.");
@@ -112,17 +91,6 @@ export const CreateRoundScreen: React.FC<CreateRoundScreenProps> = ({
 
   const getMinDate = () => {
     return new Date().toISOString().split("T")[0];
-  };
-
-  const getMinVotingDate = () => {
-    return formData.startDate || getMinDate();
-  };
-
-  const getMaxVotingDate = () => {
-    if (!formData.endDate) return undefined;
-    const endDate = new Date(formData.endDate);
-    endDate.setDate(endDate.getDate() - 1);
-    return endDate.toISOString().split("T")[0];
   };
 
   return (
@@ -165,106 +133,53 @@ export const CreateRoundScreen: React.FC<CreateRoundScreenProps> = ({
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Timeline</Text>
-        <Text style={styles.sectionSubtitle}>
-          Set when the round starts, when voting begins, and when it ends
-        </Text>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Round Start Date *</Text>
-          <TextInput
-            style={[styles.input, errors.startDate && styles.inputError]}
-            value={formData.startDate}
-            onChangeText={(text) => updateFormData("startDate", text)}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor="#666"
-          />
-          {errors.startDate && (
-            <Text style={styles.errorText}>{errors.startDate}</Text>
-          )}
-          <Text style={styles.helpText}>
-            When members can start submitting songs
+      {isFirstRound ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Timeline</Text>
+          <Text style={styles.sectionSubtitle}>
+            Set when the round starts. Voting and end dates will be calculated
+            automatically based on your group settings.
           </Text>
-        </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Voting Start Date *</Text>
-          <TextInput
-            style={[styles.input, errors.votingStartDate && styles.inputError]}
-            value={formData.votingStartDate}
-            onChangeText={(text) => updateFormData("votingStartDate", text)}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor="#666"
-          />
-          {errors.votingStartDate && (
-            <Text style={styles.errorText}>{errors.votingStartDate}</Text>
-          )}
-          <Text style={styles.helpText}>
-            When voting opens and submissions close
-          </Text>
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Round End Date *</Text>
-          <TextInput
-            style={[styles.input, errors.endDate && styles.inputError]}
-            value={formData.endDate}
-            onChangeText={(text) => updateFormData("endDate", text)}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor="#666"
-          />
-          {errors.endDate && (
-            <Text style={styles.errorText}>{errors.endDate}</Text>
-          )}
-          <Text style={styles.helpText}>
-            When voting closes and round completes
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <View style={styles.timelinePreview}>
-          <Text style={styles.timelineTitle}>Timeline Preview</Text>
-          <View style={styles.timelineItem}>
-            <View
-              style={[styles.timelineDot, { backgroundColor: "#FFB000" }]}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Round Start Date *</Text>
+            <TextInput
+              style={[styles.input, errors.startDate && styles.inputError]}
+              value={formData.startDate}
+              onChangeText={(text) => updateFormData("startDate", text)}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor="#666"
             />
-            <View style={styles.timelineContent}>
-              <Text style={styles.timelineLabel}>Submissions Open</Text>
-              <Text style={styles.timelineDate}>
-                {formData.startDate
-                  ? new Date(formData.startDate).toLocaleDateString()
-                  : "Start date"}
-              </Text>
-            </View>
+            {errors.startDate && (
+              <Text style={styles.errorText}>{errors.startDate}</Text>
+            )}
+            <Text style={styles.helpText}>
+              When members can start submitting songs
+            </Text>
           </View>
-          <View style={styles.timelineItem}>
-            <View
-              style={[styles.timelineDot, { backgroundColor: "#FF8C00" }]}
-            />
-            <View style={styles.timelineContent}>
-              <Text style={styles.timelineLabel}>Voting Opens</Text>
-              <Text style={styles.timelineDate}>
-                {formData.votingStartDate
-                  ? new Date(formData.votingStartDate).toLocaleDateString()
-                  : "Voting start date"}
+        </View>
+      ) : (
+        <View style={styles.section}>
+          <View style={styles.autoTimelineInfo}>
+            <Text style={styles.autoTimelineTitle}>Timeline</Text>
+            <Text style={styles.autoTimelineText}>
+              This round's timeline will be automatically calculated based on
+              your group settings and the previous round's end date.
+            </Text>
+            <View style={styles.autoTimelineDetails}>
+              <Text style={styles.autoTimelineDetail}>
+                • Start: When the previous round ends
               </Text>
-            </View>
-          </View>
-          <View style={styles.timelineItem}>
-            <View style={[styles.timelineDot, { backgroundColor: "#666" }]} />
-            <View style={styles.timelineContent}>
-              <Text style={styles.timelineLabel}>Round Ends</Text>
-              <Text style={styles.timelineDate}>
-                {formData.endDate
-                  ? new Date(formData.endDate).toLocaleDateString()
-                  : "End date"}
+              <Text style={styles.autoTimelineDetail}>
+                • Voting opens: After submission period ends
+              </Text>
+              <Text style={styles.autoTimelineDetail}>
+                • End: When voting period ends
               </Text>
             </View>
           </View>
         </View>
-      </View>
+      )}
 
       <View style={styles.footer}>
         <TouchableOpacity
@@ -405,5 +320,31 @@ const styles = StyleSheet.create({
     color: "#191414",
     fontSize: 16,
     fontWeight: "600",
+  },
+  autoTimelineInfo: {
+    backgroundColor: "#282828",
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#404040",
+  },
+  autoTimelineTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "white",
+    marginBottom: 8,
+  },
+  autoTimelineText: {
+    fontSize: 14,
+    color: "#B3B3B3",
+    marginBottom: 12,
+  },
+  autoTimelineDetails: {
+    marginTop: 8,
+  },
+  autoTimelineDetail: {
+    fontSize: 13,
+    color: "#B3B3B3",
+    marginBottom: 4,
   },
 });

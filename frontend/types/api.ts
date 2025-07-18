@@ -85,9 +85,7 @@ export interface CreateRoundData {
   groupId: string;
   theme: string;
   description?: string;
-  startDate: string;
-  endDate: string;
-  votingStartDate: string;
+  startDate?: string; // Optional - only required for first round
   order?: number;
 }
 
