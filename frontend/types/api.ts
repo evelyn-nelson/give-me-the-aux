@@ -28,7 +28,7 @@ export interface Round {
   id: string;
   theme: string;
   description?: string;
-  status: "SUBMISSION" | "VOTING" | "COMPLETED";
+  status: "INACTIVE" | "SUBMISSION" | "VOTING" | "COMPLETED";
   startDate: string;
   endDate: string;
   votingStartDate: string;
@@ -97,7 +97,7 @@ export interface UpdateRoundData {
   startDate?: string;
   endDate?: string;
   votingStartDate?: string;
-  status?: "SUBMISSION" | "VOTING" | "COMPLETED";
+  status?: "INACTIVE" | "SUBMISSION" | "VOTING" | "COMPLETED";
   order?: number;
 }
 

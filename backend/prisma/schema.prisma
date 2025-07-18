@@ -178,6 +178,7 @@ model RefreshToken {
 }
 
 enum RoundStatus {
+  INACTIVE
   SUBMISSION
   VOTING
   COMPLETED
