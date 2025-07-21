@@ -2,6 +2,7 @@
 
 # Prisma Schema Update Script
 # This script handles the complete workflow for updating Prisma schema in Docker
+# AND on the host filesystem for editor integration
 
 set -e  # Exit on any error
 
@@ -23,15 +24,37 @@ stop_backend() {
     docker compose stop backend || true
 }
 
+# Function to check if host has Prisma CLI
+check_host_prisma() {
+    if ! command -v npx >/dev/null 2>&1; then
+        echo "❌ npx not found. Please install Node.js on the host system."
+        exit 1
+    fi
+    
+    if ! cd backend && npx prisma --version >/dev/null 2>&1; then
+        echo "❌ Prisma CLI not available on host. Installing dependencies..."
+        cd backend && npm install
+    fi
+}
+
 # Function to regenerate Prisma client and push schema
 update_prisma() {
-    echo "📦 Generating Prisma client..."
+    echo "🔧 Checking host Prisma CLI..."
+    check_host_prisma
+    
+    echo "📦 Generating Prisma client on HOST (for editor integration)..."
+    cd backend && npx prisma generate
+    
+    echo "📦 Generating Prisma client in CONTAINER..."
     docker compose --profile tools run --rm prisma generate
     
     echo "🗄️ Pushing schema to database..."
     docker compose --profile tools run --rm prisma db push --accept-data-loss
     
-    echo "🔄 Regenerating Prisma client after schema push..."
+    echo "🔄 Regenerating Prisma client on HOST after schema push..."
+    cd backend && npx prisma generate
+    
+    echo "🔄 Regenerating Prisma client in CONTAINER after schema push..."
     docker compose --profile tools run --rm prisma generate
 }
 
@@ -69,11 +92,13 @@ main() {
     
     echo ""
     echo "✅ Schema update completed successfully!"
+    echo "📝 Prisma client generated on BOTH host and container"
+    echo "🎯 Your text editor should now see the updated types"
     echo ""
     echo "📋 Next steps:"
-    echo "1. Check backend logs: docker compose logs backend"
-    echo "2. Test your API endpoints"
-    echo "3. If you see TypeScript errors, the container may need a moment to recompile"
+    echo "1. Restart your TypeScript language server if types don't appear immediately"
+    echo "2. Check backend logs: docker compose logs backend"
+    echo "3. Test your API endpoints"
     echo ""
     
     # Optionally show recent logs

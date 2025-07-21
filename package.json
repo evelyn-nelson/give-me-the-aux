@@ -15,6 +15,7 @@
     "logs:postgres": "docker compose logs -f postgres",
     "schema:update": "./scripts/update-schema.sh",
     "schema:generate": "./scripts/prisma-dev.sh",
+    "schema:verify": "echo '🔍 Host Prisma:' && cd backend && npx prisma --version && echo '🔍 Container Prisma:' && docker compose --profile tools run --rm prisma --version",
     "prisma:studio": "docker compose --profile tools run --rm -p 5555:5555 prisma studio --hostname 0.0.0.0",
     "prisma:push": "docker compose --profile tools run --rm prisma db push",
     "prisma:generate": "docker compose --profile tools run --rm prisma generate",

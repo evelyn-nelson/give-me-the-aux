@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "node -r dotenv/config node_modules/.bin/nodemon --exec ts-node src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push",
+    "prisma:studio": "prisma studio"
   },
   "keywords": [],
   "author": "",

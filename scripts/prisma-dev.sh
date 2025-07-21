@@ -2,6 +2,7 @@
 
 # Quick Prisma Development Script
 # For rapid iteration when you just need to regenerate the client
+# Generates client on BOTH host and container for editor integration
 
 set -e
 
@@ -14,8 +15,28 @@ if ! docker compose ps --services --filter "status=running" | grep -q "postgres"
     sleep 5
 fi
 
-echo "📦 Regenerating Prisma client..."
+# Function to check if host has Prisma CLI
+check_host_prisma() {
+    if ! command -v npx >/dev/null 2>&1; then
+        echo "❌ npx not found. Please install Node.js on the host system."
+        exit 1
+    fi
+    
+    if ! cd backend && npx prisma --version >/dev/null 2>&1; then
+        echo "❌ Prisma CLI not available on host. Installing dependencies..."
+        cd backend && npm install
+    fi
+}
+
+echo "🔧 Checking host Prisma CLI..."
+check_host_prisma
+
+echo "📦 Regenerating Prisma client on HOST (for editor integration)..."
+cd backend && npx prisma generate
+
+echo "📦 Regenerating Prisma client in CONTAINER..."
 docker compose --profile tools run --rm prisma generate
 
-echo "✅ Prisma client regenerated!"
+echo "✅ Prisma client regenerated on BOTH host and container!"
+echo "🎯 Your text editor should now see the updated types"
 echo "💡 Tip: If you made schema changes, use './scripts/update-schema.sh' instead" 

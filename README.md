@@ -125,3 +125,12 @@ docker compose --profile tools run --rm prisma db push
 # Open Prisma Studio (optional)
 
 docker compose --profile tools run --rm -p 5555:5555 prisma studio --hostname 0.0.0.0
+
+## Schema Development Commands Quick Reference
+
+| Command                   | Purpose                     | When to Use                  |
+| ------------------------- | --------------------------- | ---------------------------- |
+| `npm run schema:update`   | Full schema update workflow | After changing schema.prisma |
+| `npm run schema:generate` | Quick client regeneration   | When client is out of sync   |
+| `npm run build:backend`   | Rebuild backend container   | When scripts fail            |
+| `npm run prisma:studio`   | Open database GUI           | Exploring/debugging data     |
