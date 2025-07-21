@@ -8,6 +8,7 @@ import {
   FlatList,
   ActivityIndicator,
   Alert,
+  Image,
 } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -186,6 +187,10 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
   };
 
   const renderSubmissionCard = ({ item: submission }: { item: Submission }) => {
+    // Only show the vote count if the user has already voted for this round
+    const userHasVotedInRound = (round.submissions || []).some((s) =>
+      (s.votes || []).some((v) => v.user?.id === user?.id && v.count > 0)
+    );
     const totalVotes = getTotalVotes(submission);
     const userVotes = getUserVoteCount(submission);
     const isUserSubmission = submission.user?.id === user?.id;
@@ -200,7 +205,12 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
           </View>
           {submission.imageUrl && (
             <View style={styles.albumArt}>
-              <Text style={styles.albumArtPlaceholder}>♪</Text>
+              <Image
+                source={{ uri: submission.imageUrl }}
+                style={styles.albumArt}
+                resizeMode="cover"
+                accessibilityLabel={`${submission.trackName} album art`}
+              />
             </View>
           )}
         </View>
@@ -214,9 +224,11 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
           </Text>
 
           <View style={styles.voteContainer}>
-            <Text style={styles.voteCount}>
-              {totalVotes} vote{totalVotes !== 1 ? "s" : ""}
-            </Text>
+            {userHasVotedInRound && (
+              <Text style={styles.voteCount}>
+                {totalVotes} vote{totalVotes !== 1 ? "s" : ""}
+              </Text>
+            )}
 
             {canVote && !isUserSubmission && (
               <View style={styles.voteControls}>
@@ -428,9 +440,26 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
           {round.status === "SUBMISSION" ? (
             // Show member submission status during submission phase
             <>
+              {/* Show user's submission during submission phase if they have one */}
+              {userSubmission && (
+                <View style={styles.userSubmissionContainer}>
+                  <View style={styles.userSubmissionHeader}>
+                    <Text style={styles.sectionTitle}>Your Submission</Text>
+                    <TouchableOpacity
+                      style={styles.editSubmissionButton}
+                      onPress={() =>
+                        onSubmitSongPress(round.id, userSubmission)
+                      }
+                    >
+                      <Text style={styles.editSubmissionButtonText}>Edit</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {renderSubmissionCard({ item: userSubmission })}
+                </View>
+              )}
               <View style={styles.submissionsHeader}>
                 <Text style={styles.sectionTitle}>
-                  Member Status ({groupMembers.length})
+                  Voting Status ({groupMembers.length})
                 </Text>
                 {canSubmit && (
                   <TouchableOpacity
@@ -450,24 +479,6 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
                   <Text style={styles.emptySubtitle}>
                     There seems to be an issue loading group members.
                   </Text>
-                </View>
-              )}
-
-              {/* Show user's submission during submission phase if they have one */}
-              {userSubmission && (
-                <View style={styles.userSubmissionContainer}>
-                  <View style={styles.userSubmissionHeader}>
-                    <Text style={styles.sectionTitle}>Your Submission</Text>
-                    <TouchableOpacity
-                      style={styles.editSubmissionButton}
-                      onPress={() =>
-                        onSubmitSongPress(round.id, userSubmission)
-                      }
-                    >
-                      <Text style={styles.editSubmissionButtonText}>Edit</Text>
-                    </TouchableOpacity>
-                  </View>
-                  {renderSubmissionCard({ item: userSubmission })}
                 </View>
               )}
             </>
@@ -616,6 +627,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginTop: 16,
     marginBottom: 16,
   },
   submitButton: {
