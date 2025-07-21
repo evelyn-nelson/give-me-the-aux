@@ -20,6 +20,8 @@ export interface Submission {
   artistName: string;
   albumName: string;
   imageUrl?: string;
+  spotifyUrl: string;
+  previewUrl?: string;
   user: User;
   votes: Vote[];
 }
@@ -64,6 +66,14 @@ export interface Group {
   };
 }
 
+export interface GroupMemberWithSubmissionStatus {
+  id: string;
+  displayName: string;
+  avatarUrl?: string;
+  hasSubmitted: boolean;
+  isCurrentUser: boolean;
+}
+
 // API Request/Response types
 export interface CreateGroupData {
   name: string;
@@ -106,6 +116,8 @@ export interface CreateSubmissionData {
   artistName: string;
   albumName: string;
   imageUrl?: string;
+  spotifyUrl: string;
+  previewUrl?: string;
 }
 
 export interface CreateVoteData {

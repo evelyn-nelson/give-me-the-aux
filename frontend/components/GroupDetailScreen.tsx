@@ -158,8 +158,8 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack}>
-          <Text style={styles.backText}>‹ Back</Text>
+        <TouchableOpacity onPress={onBack} style={styles.backButton}>
+          <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
         {isAdmin && (
           <View style={styles.headerActions}>
@@ -284,13 +284,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 15,
+    paddingBottom: 20,
     borderBottomWidth: 1,
     borderBottomColor: "#404040",
+  },
+  backButton: {
+    padding: 8,
   },
   backText: {
     fontSize: 16,
     color: "#FFB000",
+    fontWeight: "500",
   },
   headerActions: {
     flexDirection: "row",

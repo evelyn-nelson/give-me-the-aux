@@ -16,13 +16,21 @@ import {
   useDeleteVote,
 } from "../hooks/useSubmissions";
 import { useRound } from "../hooks/useRounds";
-import { Round, User, Vote, Submission, Group } from "../types/api";
+import { useGroupRoundMembers } from "../hooks/useGroups";
+import {
+  Round,
+  User,
+  Vote,
+  Submission,
+  Group,
+  GroupMemberWithSubmissionStatus,
+} from "../types/api";
 
 interface RoundDetailScreenProps {
   round: Round;
   group: Group;
   onBack: () => void;
-  onSubmitSongPress: (roundId: string) => void;
+  onSubmitSongPress: (roundId: string, existingSubmission?: Submission) => void;
   onEditRoundPress?: (round: Round) => void;
 }
 
@@ -42,6 +50,10 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
     initialRound // Pass initial data to avoid refetch
   );
 
+  // Fetch group members with submission status (only needed during submission phase)
+  const { data: groupMembers = [], isLoading: isLoadingMembers } =
+    useGroupRoundMembers(group.id, round.id);
+
   const createVoteMutation = useCreateVote();
   const updateVoteMutation = useUpdateVote();
   const deleteVoteMutation = useDeleteVote();
@@ -53,9 +65,10 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
 
   // Use the group prop instead of round.group
   const isAdmin = group?.admin?.id === user?.id;
-  const canSubmit =
-    round.status === "SUBMISSION" &&
-    !round.submissions?.find((s) => s.user?.id === user?.id);
+  const userSubmission = round.submissions?.find(
+    (s) => s.user?.id === user?.id
+  );
+  const canSubmit = round.status === "SUBMISSION" && !userSubmission;
   const canVote = round.status === "VOTING";
 
   const getStatusColor = (status: string) => {
@@ -262,6 +275,66 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
     );
   };
 
+  const renderMemberStatusSection = () => {
+    const submittedMembers = groupMembers.filter(
+      (member) => member.hasSubmitted
+    );
+    const pendingMembers = groupMembers.filter(
+      (member) => !member.hasSubmitted
+    );
+
+    const renderMemberAvatar = (
+      member: GroupMemberWithSubmissionStatus,
+      index: number
+    ) => (
+      <View key={member.id} style={styles.memberAvatarSmall}>
+        <Text style={styles.memberAvatarSmallText}>
+          {member.displayName.charAt(0).toUpperCase()}
+        </Text>
+      </View>
+    );
+
+    return (
+      <View style={styles.memberStatusContainer}>
+        {/* Submitted Members */}
+        <View style={styles.statusGroup}>
+          <View style={styles.statusGroupHeader}>
+            <View style={styles.statusIndicatorSubmitted} />
+            <Text style={styles.statusGroupTitle}>
+              Submitted ({submittedMembers.length})
+            </Text>
+          </View>
+          <View style={styles.avatarRow}>
+            {submittedMembers.length > 0 ? (
+              submittedMembers.map(renderMemberAvatar)
+            ) : (
+              <Text style={styles.emptyStatusText}>No submissions yet</Text>
+            )}
+          </View>
+        </View>
+
+        {/* Pending Members */}
+        <View style={styles.statusGroup}>
+          <View style={styles.statusGroupHeader}>
+            <View style={styles.statusIndicatorPending} />
+            <Text style={styles.statusGroupTitle}>
+              Not Submitted ({pendingMembers.length})
+            </Text>
+          </View>
+          <View style={styles.avatarRow}>
+            {pendingMembers.length > 0 ? (
+              pendingMembers.map(renderMemberAvatar)
+            ) : (
+              <Text style={styles.emptyStatusText}>
+                Everyone has submitted!
+              </Text>
+            )}
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   // Show loading state while fetching round data - now rarely needed since we use initialData
   if (isLoadingRound && !round) {
     return (
@@ -289,8 +362,8 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack}>
-          <Text style={styles.backText}>‹ Back</Text>
+        <TouchableOpacity onPress={onBack} style={styles.backButton}>
+          <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
         {isAdmin && onEditRoundPress && round.status === "SUBMISSION" && (
           <TouchableOpacity onPress={() => onEditRoundPress(round)}>
@@ -352,44 +425,77 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
         )}
 
         <View style={styles.submissions}>
-          <View style={styles.submissionsHeader}>
-            <Text style={styles.sectionTitle}>
-              Submissions ({(round.submissions || []).length})
-            </Text>
-            {canSubmit && (
-              <TouchableOpacity
-                style={styles.submitButton}
-                onPress={() => onSubmitSongPress(round.id)}
-              >
-                <Text style={styles.submitButtonText}>+ Submit Song</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <FlatList
-            data={sortedSubmissions}
-            renderItem={renderSubmissionCard}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyTitle}>No Submissions Yet</Text>
-                <Text style={styles.emptySubtitle}>
-                  {round.status === "SUBMISSION"
-                    ? "Be the first to submit a song!"
-                    : "No songs were submitted for this round."}
+          {round.status === "SUBMISSION" ? (
+            // Show member submission status during submission phase
+            <>
+              <View style={styles.submissionsHeader}>
+                <Text style={styles.sectionTitle}>
+                  Member Status ({groupMembers.length})
                 </Text>
                 {canSubmit && (
                   <TouchableOpacity
-                    style={styles.emptyButton}
-                    onPress={() => onSubmitSongPress(round.id)}
+                    style={styles.submitButton}
+                    onPress={() => onSubmitSongPress(round.id, undefined)}
                   >
-                    <Text style={styles.emptyButtonText}>Submit Your Song</Text>
+                    <Text style={styles.submitButtonText}>+ Submit Song</Text>
                   </TouchableOpacity>
                 )}
               </View>
-            }
-          />
+
+              {groupMembers.length > 0 ? (
+                renderMemberStatusSection()
+              ) : (
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyTitle}>No Members Found</Text>
+                  <Text style={styles.emptySubtitle}>
+                    There seems to be an issue loading group members.
+                  </Text>
+                </View>
+              )}
+
+              {/* Show user's submission during submission phase if they have one */}
+              {userSubmission && (
+                <View style={styles.userSubmissionContainer}>
+                  <View style={styles.userSubmissionHeader}>
+                    <Text style={styles.sectionTitle}>Your Submission</Text>
+                    <TouchableOpacity
+                      style={styles.editSubmissionButton}
+                      onPress={() =>
+                        onSubmitSongPress(round.id, userSubmission)
+                      }
+                    >
+                      <Text style={styles.editSubmissionButtonText}>Edit</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {renderSubmissionCard({ item: userSubmission })}
+                </View>
+              )}
+            </>
+          ) : (
+            // Show actual submissions during voting and completed phases
+            <>
+              <View style={styles.submissionsHeader}>
+                <Text style={styles.sectionTitle}>
+                  Submissions ({(round.submissions || []).length})
+                </Text>
+              </View>
+
+              <FlatList
+                data={sortedSubmissions}
+                renderItem={renderSubmissionCard}
+                keyExtractor={(item) => item.id}
+                scrollEnabled={false}
+                ListEmptyComponent={
+                  <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyTitle}>No Submissions</Text>
+                    <Text style={styles.emptySubtitle}>
+                      No songs were submitted for this round.
+                    </Text>
+                  </View>
+                }
+              />
+            </>
+          )}
         </View>
       </ScrollView>
 
@@ -413,13 +519,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingTop: 20,
-    paddingBottom: 15,
+    paddingBottom: 20,
     borderBottomWidth: 1,
     borderBottomColor: "#404040",
+  },
+  backButton: {
+    padding: 8,
   },
   backText: {
     fontSize: 16,
     color: "#FFB000",
+    fontWeight: "500",
   },
   editText: {
     fontSize: 16,
@@ -656,5 +766,81 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#B3B3B3",
     marginTop: 12,
+  },
+  memberStatusContainer: {
+    gap: 20,
+  },
+  statusGroup: {
+    backgroundColor: "#282828",
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#404040",
+  },
+  statusGroupHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  statusGroupTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "white",
+    marginLeft: 8,
+  },
+  statusIndicatorSubmitted: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#4CAF50",
+  },
+  statusIndicatorPending: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#666666",
+  },
+  avatarRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  memberAvatarSmall: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#FFB000",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  memberAvatarSmallText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#191414",
+  },
+  emptyStatusText: {
+    fontSize: 14,
+    color: "#B3B3B3",
+    fontStyle: "italic",
+  },
+  userSubmissionContainer: {
+    marginTop: 20,
+  },
+  userSubmissionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  editSubmissionButton: {
+    backgroundColor: "#FFB000",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  editSubmissionButtonText: {
+    color: "#191414",
+    fontSize: 14,
+    fontWeight: "600",
   },
 });

@@ -6,7 +6,8 @@ import { GroupDetailScreen } from "./GroupDetailScreen";
 import { CreateRoundScreen } from "./CreateRoundScreen";
 import { RoundDetailScreen } from "./RoundDetailScreen";
 import { EditGroupScreen } from "./EditGroupScreen";
-import { Group, Round } from "../types/api";
+import { SubmitSongScreen } from "./SubmitSongScreen";
+import { Group, Round, Submission } from "../types/api";
 
 type ScreenType =
   | "list"
@@ -14,7 +15,8 @@ type ScreenType =
   | "group-detail"
   | "create-round"
   | "round-detail"
-  | "edit-group";
+  | "edit-group"
+  | "submit-song";
 
 interface ScreenState {
   screen: ScreenType;
@@ -23,6 +25,7 @@ interface ScreenState {
   createRoundGroupId?: string;
   createRoundGroupName?: string;
   editingGroup?: Group;
+  existingSubmission?: Submission;
 }
 
 export const GroupsNavigator: React.FC = () => {
@@ -39,10 +42,7 @@ export const GroupsNavigator: React.FC = () => {
   };
 
   const navigateToGroupDetail = (group: Group) => {
-    setScreenState({
-      screen: "group-detail",
-      selectedGroup: group,
-    });
+    setScreenState({ screen: "group-detail", selectedGroup: group });
   };
 
   const navigateToCreateRound = (groupId: string, groupName: string) => {
@@ -50,7 +50,6 @@ export const GroupsNavigator: React.FC = () => {
       screen: "create-round",
       createRoundGroupId: groupId,
       createRoundGroupName: groupName,
-      selectedGroup: screenState.selectedGroup, // Preserve the current group
     });
   };
 
@@ -58,34 +57,55 @@ export const GroupsNavigator: React.FC = () => {
     setScreenState({
       screen: "round-detail",
       selectedRound: round,
-      selectedGroup: screenState.selectedGroup, // Preserve the current group
+      selectedGroup: screenState.selectedGroup,
+      existingSubmission: undefined,
+    });
+  };
+
+  const navigateToSubmitSong = (
+    round: Round,
+    group: Group,
+    existingSubmission?: Submission
+  ) => {
+    setScreenState({
+      screen: "submit-song",
+      selectedRound: round,
+      selectedGroup: group,
+      existingSubmission,
     });
   };
 
   const handleGroupCreated = () => {
-    // TODO: Refresh groups list
     navigateToGroupList();
   };
 
   const handleGroupUpdated = (updatedGroup: Group) => {
-    // Update the selected group with the updated data
-    if (screenState.selectedGroup?.id === updatedGroup.id) {
-      setScreenState((prev) => ({
-        ...prev,
-        selectedGroup: updatedGroup,
-      }));
-    }
-    // Navigate back to group detail with the updated group
-    navigateToGroupDetail(updatedGroup);
+    setScreenState({
+      screen: "group-detail",
+      selectedGroup: updatedGroup,
+    });
   };
 
   const handleRoundCreated = () => {
-    // Navigate back to group detail - the query invalidation in useCreateRound
-    // will automatically refresh the group data, and GroupDetailScreen will fetch fresh data
+    // Always go back to the group detail since we're creating a round for that group
     if (screenState.selectedGroup) {
       navigateToGroupDetail(screenState.selectedGroup);
     } else {
-      navigateToGroupList();
+      // Fallback: create a minimal group object to navigate back
+      navigateToGroupDetail({
+        id: screenState.createRoundGroupId!,
+        name: screenState.createRoundGroupName!,
+        adminId: "", // We don't have this info, but it's not used for navigation
+        createdAt: new Date().toISOString(),
+        submissionDurationDays: 3,
+        votingDurationDays: 2,
+        votesPerUserPerRound: 10,
+        maxVotesPerSong: 3,
+        admin: { id: "", displayName: "" },
+        members: [],
+        rounds: [],
+        _count: { members: 0, rounds: 0 },
+      });
     }
   };
 
@@ -93,22 +113,43 @@ export const GroupsNavigator: React.FC = () => {
     setScreenState({
       screen: "edit-group",
       editingGroup: group,
-      selectedGroup: screenState.selectedGroup, // Preserve the current group
+      selectedGroup: screenState.selectedGroup,
     });
   };
 
   const handleGroupEdited = (group: Group) => {
-    navigateToEditGroup(group);
+    setScreenState({
+      screen: "group-detail",
+      selectedGroup: group,
+    });
   };
 
   const handleRoundEdited = (round: Round) => {
-    // TODO: Navigate to edit round screen (not implemented yet)
-    console.log("Edit round:", round.theme);
+    setScreenState({
+      screen: "round-detail",
+      selectedRound: round,
+      selectedGroup: screenState.selectedGroup,
+    });
   };
 
-  const handleSubmitSong = (roundId: string) => {
-    // TODO: Navigate to submit song screen (not implemented yet)
-    console.log("Submit song for round:", roundId);
+  const handleSubmitSong = (
+    roundId: string,
+    existingSubmission?: Submission
+  ) => {
+    if (screenState.selectedRound && screenState.selectedGroup) {
+      navigateToSubmitSong(
+        screenState.selectedRound,
+        screenState.selectedGroup,
+        existingSubmission
+      );
+    }
+  };
+
+  const handleSongSubmitted = () => {
+    // Refresh the round data after submission
+    if (screenState.selectedRound && screenState.selectedGroup) {
+      navigateToRoundDetail(screenState.selectedRound);
+    }
   };
 
   const renderCurrentScreen = () => {
@@ -195,6 +236,23 @@ export const GroupsNavigator: React.FC = () => {
             }}
             onSubmitSongPress={handleSubmitSong}
             onEditRoundPress={handleRoundEdited}
+          />
+        );
+
+      case "submit-song":
+        if (!screenState.selectedRound || !screenState.selectedGroup)
+          return null;
+        return (
+          <SubmitSongScreen
+            round={screenState.selectedRound}
+            group={screenState.selectedGroup}
+            existingSubmission={screenState.existingSubmission}
+            onBack={() => {
+              if (screenState.selectedRound && screenState.selectedGroup) {
+                navigateToRoundDetail(screenState.selectedRound);
+              }
+            }}
+            onSuccess={handleSongSubmitted}
           />
         );
 

@@ -262,18 +262,20 @@ const styles = StyleSheet.create({
   settingsHeader: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 20,
-    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 20,
     borderBottomWidth: 1,
     borderBottomColor: "#404040",
   },
   backButton: {
+    padding: 8,
     marginRight: 15,
   },
   backButtonText: {
     color: "#FFB000",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "500",
   },
   settingsTitle: {
     fontSize: 20,

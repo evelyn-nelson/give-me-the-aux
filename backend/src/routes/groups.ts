@@ -526,4 +526,90 @@ router.delete(
   }
 );
 
+// Get group members with submission status for a specific round
+router.get(
+  "/:groupId/rounds/:roundId/members",
+  apiRoutesLimiter,
+  requireAuth,
+  async (req: AuthRequest, res) => {
+    try {
+      const { groupId, roundId } = req.params;
+      const userId = req.user!.id;
+
+      // Check if user is a member of the group
+      const group = await prisma.group.findFirst({
+        where: {
+          id: groupId,
+          members: {
+            some: {
+              userId: userId,
+            },
+          },
+        },
+        include: {
+          members: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  displayName: true,
+                  avatarUrl: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!group) {
+        return res
+          .status(404)
+          .json({ error: "Group not found or you are not a member" });
+      }
+
+      // Check if round exists and belongs to this group
+      const round = await prisma.round.findFirst({
+        where: {
+          id: roundId,
+          groupId: groupId,
+        },
+      });
+
+      if (!round) {
+        return res
+          .status(404)
+          .json({ error: "Round not found or doesn't belong to this group" });
+      }
+
+      // Get all submissions for this round
+      const submissions = await prisma.submission.findMany({
+        where: {
+          roundId: roundId,
+        },
+        select: {
+          userId: true,
+        },
+      });
+
+      const submittedUserIds = new Set(submissions.map((s) => s.userId));
+
+      // Map members with submission status
+      const membersWithStatus = group.members.map((member) => ({
+        id: member.user.id,
+        displayName: member.user.displayName,
+        avatarUrl: member.user.avatarUrl,
+        hasSubmitted: submittedUserIds.has(member.user.id),
+        isCurrentUser: member.user.id === userId,
+      }));
+
+      res.json({ data: membersWithStatus });
+    } catch (error) {
+      console.error("Get group members with submission status error:", error);
+      res
+        .status(500)
+        .json({ error: "Failed to get group members with submission status" });
+    }
+  }
+);
+
 export default router;

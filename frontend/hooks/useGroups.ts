@@ -1,6 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApi } from "./useApi";
-import { Group, CreateGroupData, UpdateGroupData, Round } from "../types/api";
+import {
+  Group,
+  CreateGroupData,
+  UpdateGroupData,
+  Round,
+  GroupMemberWithSubmissionStatus,
+} from "../types/api";
 import { roundKeys } from "./useRounds";
 
 // Query Keys
@@ -10,6 +16,8 @@ export const groupKeys = {
   list: () => [...groupKeys.lists()] as const,
   details: () => [...groupKeys.all, "detail"] as const,
   detail: (id: string) => [...groupKeys.details(), id] as const,
+  roundMembers: (groupId: string, roundId: string) =>
+    [...groupKeys.all, "round-members", groupId, roundId] as const,
 };
 
 // Utility function to prefetch related data
@@ -117,5 +125,21 @@ export const useDeleteGroup = () => {
       // Invalidate groups list
       queryClient.invalidateQueries({ queryKey: groupKeys.lists() });
     },
+  });
+};
+
+export const useGroupRoundMembers = (groupId: string, roundId: string) => {
+  const api = useApi();
+
+  return useQuery({
+    queryKey: groupKeys.roundMembers(groupId, roundId),
+    queryFn: async () => {
+      const response = await api.get(
+        `/api/groups/${groupId}/rounds/${roundId}/members`
+      );
+      return response.data as GroupMemberWithSubmissionStatus[];
+    },
+    enabled: !!groupId && !!roundId,
+    staleTime: 1000 * 30, // Consider data fresh for 30 seconds
   });
 };

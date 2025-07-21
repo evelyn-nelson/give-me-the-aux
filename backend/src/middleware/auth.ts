@@ -12,6 +12,7 @@ export interface AuthRequest extends Request {
     displayName: string;
     avatarUrl?: string;
     country?: string;
+    spotifyAccessToken?: string;
   };
 }
 
@@ -33,10 +34,8 @@ export const requireAuth = async (
       return res.status(401).json({ error: "Invalid token" });
     }
 
-    // Get user directly from database using JWT payload
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-    });
+    // Get user with valid Spotify token (auto-refreshes if needed)
+    const user = await AuthService.getUserWithValidToken(decoded.userId);
 
     if (!user) {
       return res.status(401).json({ error: "User not found" });
@@ -49,6 +48,7 @@ export const requireAuth = async (
       displayName: user.displayName,
       avatarUrl: user.avatarUrl ?? undefined,
       country: user.country ?? undefined,
+      spotifyAccessToken: user.spotifyAccessToken ?? undefined,
     };
     next();
   } catch (error) {
@@ -72,9 +72,7 @@ export const optionalAuth = async (
     const decoded = AuthService.verifyJWT(token);
 
     if (decoded) {
-      const user = await prisma.user.findUnique({
-        where: { id: decoded.userId },
-      });
+      const user = await AuthService.getUserWithValidToken(decoded.userId);
       if (user) {
         // Map nullable fields to undefined to match AuthRequest user type
         req.user = {
@@ -84,6 +82,7 @@ export const optionalAuth = async (
           displayName: user.displayName,
           avatarUrl: user.avatarUrl ?? undefined,
           country: user.country ?? undefined,
+          spotifyAccessToken: user.spotifyAccessToken ?? undefined,
         };
       }
     }

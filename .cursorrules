@@ -81,6 +81,85 @@ Key models:
 - **API routes**: kebab-case (e.g., `user-groups.ts`)
 - **Types**: PascalCase (e.g., `ApiResponse.ts`)
 
+## UI Design System
+
+### Color Scheme
+
+**Primary Colors:**
+
+- `#191414` - Main background (dark almost black)
+- `#282828` - Secondary background (cards, sections, inputs)
+- `#FFB000` - Primary accent/brand color (golden yellow)
+- `#404040` - Borders and dividers
+- `#E53E3E` - Error states
+
+**Text Colors:**
+
+- `white` - Primary text
+- `#B3B3B3` - Secondary text (descriptions, metadata)
+- `#666666` - Muted text (placeholders, help text)
+- `#999999` - Very muted text
+
+**Usage Guidelines:**
+
+- Use `#191414` for main app background
+- Use `#282828` for cards, modals, and input backgrounds
+- Use `#FFB000` for primary buttons, active states, and brand elements
+- Use `white` for primary headings and important text
+- Use `#B3B3B3` for secondary information
+- Use `#404040` for borders (avoid shadows in favor of borders)
+
+### Component Patterns
+
+**Cards and Containers:**
+
+```typescript
+cardStyle: {
+  backgroundColor: "#282828",
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: "#404040",
+  padding: 16,
+}
+```
+
+**Primary Buttons:**
+
+```typescript
+primaryButton: {
+  backgroundColor: "#FFB000",
+  paddingVertical: 14,
+  borderRadius: 25,
+  color: "#191414", // dark text on bright background
+}
+```
+
+**Input Fields:**
+
+```typescript
+inputStyle: {
+  backgroundColor: "#282828",
+  borderWidth: 1,
+  borderColor: "#404040",
+  borderRadius: 8,
+  color: "white",
+  placeholderTextColor: "#666666",
+}
+```
+
+**Text Hierarchy:**
+
+- Headers: `color: "white", fontWeight: "600"`
+- Body text: `color: "white", fontWeight: "400"`
+- Secondary text: `color: "#B3B3B3"`
+- Accent text: `color: "#FFB000"`
+
+**Interactive Elements:**
+
+- Navigation links: `#FFB000`
+- Active states: `#FFB000`
+- Disabled states: `opacity: 0.6`
+
 ## API Patterns
 
 ### Authentication
@@ -371,3 +450,5 @@ When suggesting code:
 6. Consider mobile-first design for frontend
 7. Ensure database operations are efficient
 8. Include loading and error states
+9. **Use the established UI design system and color scheme**
+10. Follow component patterns for consistent styling

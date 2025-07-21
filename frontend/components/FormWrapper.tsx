@@ -57,7 +57,10 @@ export const FormWrapper: React.FC<FormScreenProps> = ({
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
-            <TouchableOpacity onPress={dismissKeyboardAndClose}>
+            <TouchableOpacity
+              onPress={dismissKeyboardAndClose}
+              style={styles.cancelButton}
+            >
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
             <Text style={styles.title}>{title}</Text>
@@ -92,11 +95,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingTop: Platform.OS === "ios" ? 20 : 20,
-    paddingBottom: 15,
+    paddingBottom: 20,
+  },
+  cancelButton: {
+    padding: 8,
   },
   cancelText: {
     fontSize: 16,
     color: "#FFB000",
+    fontWeight: "500",
   },
   title: {
     fontSize: 18,

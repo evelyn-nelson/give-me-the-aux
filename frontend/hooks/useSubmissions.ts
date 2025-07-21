@@ -29,7 +29,7 @@ export const useSubmissions = (roundId: string) => {
   return useQuery({
     queryKey: submissionKeys.list(roundId),
     queryFn: async () => {
-      const response = await api.get(`/api/rounds/${roundId}/submissions`);
+      const response = await api.get(`/api/submissions/round/${roundId}`);
       return response.data as Submission[];
     },
     enabled: !!roundId,
@@ -55,16 +55,16 @@ export const useCreateSubmission = () => {
 
   return useMutation({
     mutationFn: async (data: CreateSubmissionData) => {
-      const response = await api.post(
-        `/api/rounds/${data.roundId}/submissions`,
-        {
-          spotifyTrackId: data.spotifyTrackId,
-          trackName: data.trackName,
-          artistName: data.artistName,
-          albumName: data.albumName,
-          imageUrl: data.imageUrl,
-        }
-      );
+      const response = await api.post(`/api/submissions`, {
+        roundId: data.roundId,
+        spotifyTrackId: data.spotifyTrackId,
+        trackName: data.trackName,
+        artistName: data.artistName,
+        albumName: data.albumName,
+        imageUrl: data.imageUrl,
+        spotifyUrl: data.spotifyUrl,
+        previewUrl: data.previewUrl,
+      });
       return response.data as Submission;
     },
     onSuccess: (newSubmission, variables) => {
@@ -74,6 +74,40 @@ export const useCreateSubmission = () => {
       });
       // Invalidate round detail to refresh submission count
       queryClient.invalidateQueries({ queryKey: ["rounds", "detail"] });
+    },
+  });
+};
+
+// Note: Backend handles both create and update in the same POST endpoint
+export const useUpdateSubmission = () => {
+  const api = useApi();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: CreateSubmissionData) => {
+      const response = await api.post(`/api/submissions`, {
+        roundId: data.roundId,
+        spotifyTrackId: data.spotifyTrackId,
+        trackName: data.trackName,
+        artistName: data.artistName,
+        albumName: data.albumName,
+        imageUrl: data.imageUrl,
+        spotifyUrl: data.spotifyUrl,
+        previewUrl: data.previewUrl,
+      });
+      return response.data as Submission;
+    },
+    onSuccess: (updatedSubmission, variables) => {
+      // Invalidate submissions list for the round
+      queryClient.invalidateQueries({
+        queryKey: submissionKeys.list(variables.roundId),
+      });
+      // Invalidate round detail to refresh submission count
+      queryClient.invalidateQueries({ queryKey: ["rounds", "detail"] });
+      // Invalidate specific submission detail
+      queryClient.invalidateQueries({
+        queryKey: submissionKeys.detail(updatedSubmission.id),
+      });
     },
   });
 };
