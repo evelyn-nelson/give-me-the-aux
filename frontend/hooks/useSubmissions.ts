@@ -64,6 +64,7 @@ export const useCreateSubmission = () => {
         imageUrl: data.imageUrl,
         spotifyUrl: data.spotifyUrl,
         previewUrl: data.previewUrl,
+        comment: data.comment,
       });
       return response.data as Submission;
     },
@@ -94,6 +95,7 @@ export const useUpdateSubmission = () => {
         imageUrl: data.imageUrl,
         spotifyUrl: data.spotifyUrl,
         previewUrl: data.previewUrl,
+        comment: data.comment,
       });
       return response.data as Submission;
     },

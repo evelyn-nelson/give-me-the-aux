@@ -39,6 +39,7 @@ export const SubmitSongScreen: React.FC<SubmitSongScreenProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [selectedTrack, setSelectedTrack] = useState<SpotifyTrack | null>(null);
+  const [comment, setComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const createSubmissionMutation = useCreateSubmission();
@@ -60,6 +61,7 @@ export const SubmitSongScreen: React.FC<SubmitSongScreenProps> = ({
         durationMs: 0, // We don't store duration, so use a default
       };
       setSelectedTrack(track);
+      setComment(existingSubmission.comment || "");
     }
   }, [existingSubmission]);
 
@@ -118,6 +120,7 @@ export const SubmitSongScreen: React.FC<SubmitSongScreenProps> = ({
         imageUrl: selectedTrack.imageUrl,
         spotifyUrl: selectedTrack.spotifyUrl,
         previewUrl: selectedTrack.previewUrl,
+        comment: comment.trim() || undefined,
       };
 
       if (isEditing) {
@@ -212,101 +215,117 @@ export const SubmitSongScreen: React.FC<SubmitSongScreenProps> = ({
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {isEditing ? "Edit Song" : "Submit Song"}
-        </Text>
-        <View style={styles.headerSpacer} />
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Round Info */}
-        <View style={styles.roundInfo}>
-          <Text style={styles.roundTheme}>{round.theme}</Text>
-          {round.description && (
-            <Text style={styles.roundDescription}>{round.description}</Text>
-          )}
-        </View>
-
-        {/* Search Section */}
-        <View style={styles.searchSection}>
-          <Text style={styles.sectionTitle}>Search for a Song</Text>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search for songs, artists, or albums..."
-            placeholderTextColor="#666666"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-        </View>
-
-        {/* Search Results */}
-        {(searchQuery.length > 2 || debouncedSearchQuery.length > 2) && (
-          <View style={styles.searchResultsSection}>
-            {isSearching ||
-            (searchQuery.length > 2 && searchQuery !== debouncedSearchQuery) ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#FFB000" />
-                <Text style={styles.loadingText}>Searching...</Text>
-              </View>
-            ) : searchError ? (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>
-                  Failed to search. Please try again.
-                </Text>
-              </View>
-            ) : tracks && tracks.length > 0 ? (
-              <>
-                <Text style={styles.sectionTitle}>
-                  Found {tracks.length} results:
-                </Text>
-                <FlatList
-                  data={tracks}
-                  renderItem={renderSearchResult}
-                  keyExtractor={(item) => item.id}
-                  scrollEnabled={false}
-                  showsVerticalScrollIndicator={false}
-                />
-              </>
-            ) : debouncedSearchQuery.length > 2 ? (
-              <View style={styles.noResultsContainer}>
-                <Text style={styles.noResultsText}>No songs found</Text>
-              </View>
-            ) : null}
-          </View>
-        )}
-
-        {/* Selected Track */}
-        {renderSelectedTrack()}
-
-        {/* Submit Button */}
-        {selectedTrack && (
-          <TouchableOpacity
-            style={[
-              styles.submitButton,
-              isSubmitting && styles.submitButtonDisabled,
-            ]}
-            onPress={handleSubmit}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator size="small" color="#191414" />
-            ) : (
-              <Text style={styles.submitButtonText}>
-                {isEditing ? "Update Song" : "Submit Song"}
-              </Text>
+    <FormWrapper
+      title={isEditing ? "Edit Song" : "Submit Song"}
+      onClose={onBack}
+    >
+      <View style={styles.container}>
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Round Info */}
+          <View style={styles.roundInfo}>
+            <Text style={styles.roundTheme}>{round.theme}</Text>
+            {round.description && (
+              <Text style={styles.roundDescription}>{round.description}</Text>
             )}
-          </TouchableOpacity>
-        )}
-      </ScrollView>
-    </View>
+          </View>
+
+          {/* Search Section */}
+          <View style={styles.searchSection}>
+            <Text style={styles.sectionTitle}>Search for a Song</Text>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search for songs, artists, or albums..."
+              placeholderTextColor="#666666"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+
+          {/* Search Results */}
+          {(searchQuery.length > 2 || debouncedSearchQuery.length > 2) && (
+            <View style={styles.searchResultsSection}>
+              {isSearching ||
+              (searchQuery.length > 2 &&
+                searchQuery !== debouncedSearchQuery) ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#FFB000" />
+                  <Text style={styles.loadingText}>Searching...</Text>
+                </View>
+              ) : searchError ? (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>
+                    Failed to search. Please try again.
+                  </Text>
+                </View>
+              ) : tracks && tracks.length > 0 ? (
+                <>
+                  <Text style={styles.sectionTitle}>
+                    Found {tracks.length} results:
+                  </Text>
+                  <FlatList
+                    data={tracks}
+                    renderItem={renderSearchResult}
+                    keyExtractor={(item) => item.id}
+                    scrollEnabled={false}
+                    showsVerticalScrollIndicator={false}
+                  />
+                </>
+              ) : debouncedSearchQuery.length > 2 ? (
+                <View style={styles.noResultsContainer}>
+                  <Text style={styles.noResultsText}>No songs found</Text>
+                </View>
+              ) : null}
+            </View>
+          )}
+
+          {/* Selected Track */}
+          {renderSelectedTrack()}
+
+          {/* Comment Section */}
+          {selectedTrack && (
+            <View style={styles.commentSection}>
+              <Text style={styles.sectionTitle}>Add a Comment (Optional)</Text>
+              <TextInput
+                style={styles.commentInput}
+                placeholder="Share why you chose this song..."
+                placeholderTextColor="#666666"
+                value={comment}
+                onChangeText={setComment}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+                maxLength={500}
+              />
+              <Text style={styles.characterCount}>
+                {comment.length}/500 characters
+              </Text>
+            </View>
+          )}
+
+          {/* Submit Button */}
+          {selectedTrack && (
+            <TouchableOpacity
+              style={[
+                styles.submitButton,
+                isSubmitting && styles.submitButtonDisabled,
+              ]}
+              onPress={handleSubmit}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator size="small" color="#191414" />
+              ) : (
+                <Text style={styles.submitButtonText}>
+                  {isEditing ? "Update Song" : "Submit Song"}
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
+        </ScrollView>
+      </View>
+    </FormWrapper>
   );
 };
 
@@ -516,6 +535,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#FFB000",
     fontWeight: "500",
+  },
+  commentSection: {
+    marginBottom: 20,
+  },
+  commentInput: {
+    backgroundColor: "#282828",
+    borderWidth: 1,
+    borderColor: "#404040",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: "white",
+    minHeight: 80,
+    maxHeight: 120,
+  },
+  characterCount: {
+    fontSize: 12,
+    color: "#B3B3B3",
+    textAlign: "right",
+    marginTop: 8,
   },
 
   submitButton: {

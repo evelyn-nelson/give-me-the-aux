@@ -215,6 +215,12 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
           )}
         </View>
 
+        {submission.comment && (
+          <View style={styles.commentContainer}>
+            <Text style={styles.commentText}>"{submission.comment}"</Text>
+          </View>
+        )}
+
         <View style={styles.submissionFooter}>
           <Text style={styles.submitterName}>
             Submitted by{" "}
@@ -682,6 +688,22 @@ const styles = StyleSheet.create({
   albumArtPlaceholder: {
     fontSize: 24,
     color: "#B3B3B3",
+  },
+  commentContainer: {
+    marginTop: 12,
+    marginBottom: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "#1f1f1f",
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: "#FFB000",
+  },
+  commentText: {
+    fontSize: 14,
+    color: "#E0E0E0",
+    fontStyle: "italic",
+    lineHeight: 20,
   },
   submissionFooter: {
     flexDirection: "row",

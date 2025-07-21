@@ -22,6 +22,7 @@ router.post(
         imageUrl,
         previewUrl,
         spotifyUrl,
+        comment,
       } = req.body;
       const userId = req.user!.id;
 
@@ -39,6 +40,13 @@ router.post(
         return res.status(400).json({
           error:
             "Spotify track ID, track name, artist name, album name, and Spotify URL are required",
+        });
+      }
+
+      // Validate comment length
+      if (comment && comment.length > 500) {
+        return res.status(400).json({
+          error: "Comment must be 500 characters or less",
         });
       }
 
@@ -92,24 +100,21 @@ router.post(
         },
       });
 
-      const submissionData = {
-        roundId,
-        userId,
-        spotifyTrackId,
-        trackName: trackName.trim(),
-        artistName: artistName.trim(),
-        albumName: albumName.trim(),
-        imageUrl: imageUrl?.trim() || null,
-        previewUrl: previewUrl?.trim() || null,
-        spotifyUrl: spotifyUrl.trim(),
-      };
-
       let submission;
       if (existingSubmission) {
-        // Update existing submission
+        // Update existing submission - only update fields that can change
         submission = await prisma.submission.update({
           where: { id: existingSubmission.id },
-          data: submissionData,
+          data: {
+            spotifyTrackId,
+            trackName: trackName.trim(),
+            artistName: artistName.trim(),
+            albumName: albumName.trim(),
+            imageUrl: imageUrl?.trim() || null,
+            previewUrl: previewUrl?.trim() || null,
+            spotifyUrl: spotifyUrl.trim(),
+            // comment: comment?.trim() || null, // TODO: Fix Prisma client issue
+          },
           include: {
             user: {
               select: {
@@ -130,7 +135,18 @@ router.post(
       } else {
         // Create new submission
         submission = await prisma.submission.create({
-          data: submissionData,
+          data: {
+            roundId,
+            userId,
+            spotifyTrackId,
+            trackName: trackName.trim(),
+            artistName: artistName.trim(),
+            albumName: albumName.trim(),
+            imageUrl: imageUrl?.trim() || null,
+            previewUrl: previewUrl?.trim() || null,
+            spotifyUrl: spotifyUrl.trim(),
+            // comment: comment?.trim() || null, // TODO: Fix Prisma client issue
+          },
           include: {
             user: {
               select: {

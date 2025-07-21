@@ -88,6 +88,7 @@ model Submission {
   imageUrl       String?  @map("image_url")
   previewUrl     String?  @map("preview_url")
   spotifyUrl     String   @map("spotify_url")
+  comment        String?
   submittedAt    DateTime @default(now()) @map("submitted_at")
   round          Round    @relation(fields: [roundId], references: [id])
   user           User     @relation(fields: [userId], references: [id])

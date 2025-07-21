@@ -22,6 +22,7 @@ export interface Submission {
   imageUrl?: string;
   spotifyUrl: string;
   previewUrl?: string;
+  comment?: string;
   user: User;
   votes: Vote[];
 }
@@ -118,6 +119,7 @@ export interface CreateSubmissionData {
   imageUrl?: string;
   spotifyUrl: string;
   previewUrl?: string;
+  comment?: string;
 }
 
 export interface CreateVoteData {
