@@ -168,7 +168,56 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
     </TouchableOpacity>
   );
 
-  const renderMemberCard = ({ item }: { item: { user: User } }) => (
+  // Calculate vote totals for each member across completed rounds
+  const calculateMemberVoteTotals = () => {
+    const voteTotals: { [userId: string]: number } = {};
+
+    // Initialize vote totals for all members
+    currentGroup.members?.forEach((member) => {
+      voteTotals[member.user.id] = 0;
+    });
+
+    // Sum votes from completed rounds
+    currentGroup.rounds?.forEach((round) => {
+      if (round.status === "COMPLETED") {
+        round.submissions?.forEach((submission) => {
+          // Add votes received on this submission to the submission author's total
+          submission.votes?.forEach((vote) => {
+            if (voteTotals[submission.user.id] !== undefined) {
+              voteTotals[submission.user.id] += vote.count;
+            }
+          });
+        });
+      }
+    });
+
+    return voteTotals;
+  };
+
+  // Get sorted members by vote total
+  const getSortedMembers = () => {
+    const voteTotals = calculateMemberVoteTotals();
+    const membersWithVoteTotals = (currentGroup.members || []).map(
+      (member) => ({
+        ...member,
+        totalVotes: voteTotals[member.user.id] || 0,
+      })
+    );
+
+    // Sort by total votes (descending), then by name (ascending) for ties
+    return membersWithVoteTotals.sort((a, b) => {
+      if (b.totalVotes !== a.totalVotes) {
+        return b.totalVotes - a.totalVotes;
+      }
+      return (a.user.displayName || "").localeCompare(b.user.displayName || "");
+    });
+  };
+
+  const renderMemberCard = ({
+    item,
+  }: {
+    item: { user: User; totalVotes: number };
+  }) => (
     <View style={styles.memberCard}>
       <View style={styles.memberAvatar}>
         <Text style={styles.memberAvatarText}>
@@ -179,9 +228,16 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
         <Text style={styles.memberName}>
           {item.user.displayName || "Unknown User"}
         </Text>
-        {item.user.id === currentGroup.adminId && (
-          <Text style={styles.adminLabel}>Admin</Text>
-        )}
+        <View style={styles.memberDetails}>
+          <View style={styles.memberBadges}>
+            {item.user.id === currentGroup.adminId && (
+              <Text style={styles.adminLabel}>Admin</Text>
+            )}
+          </View>
+          <Text style={styles.voteTotal}>
+            {item.totalVotes} vote{item.totalVotes !== 1 ? "s" : ""}
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -286,7 +342,7 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
         ) : (
           <View style={styles.tabContent}>
             <FlatList
-              data={currentGroup.members || []}
+              data={getSortedMembers()}
               renderItem={renderMemberCard}
               keyExtractor={(item) => item.user.id}
               scrollEnabled={false}
@@ -489,11 +545,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "500",
     color: "white",
+    marginBottom: 2,
+  },
+  memberDetails: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  memberBadges: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   adminLabel: {
     fontSize: 12,
     color: "#FFB000",
     fontWeight: "600",
+  },
+  voteTotal: {
+    fontSize: 12,
+    color: "#B3B3B3",
+    fontWeight: "500",
   },
   emptyContainer: {
     alignItems: "center",

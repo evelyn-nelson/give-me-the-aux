@@ -29,7 +29,7 @@ export const useRounds = (groupId: string) => {
       return response.data as Round[];
     },
     enabled: !!groupId,
-    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
+    staleTime: 1000 * 10, // Consider data fresh for only 10 seconds since submissions/votes change frequently
   });
 };
 
@@ -44,7 +44,7 @@ export const useRound = (id: string, initialData?: Round) => {
     },
     enabled: !!id,
     initialData, // Use provided initial data to avoid loading states
-    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
+    staleTime: 0, // Always consider data stale to ensure fresh data is fetched
   });
 };
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,13 +9,16 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  TextInput,
 } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
 import {
   useCreateVote,
   useUpdateVote,
   useDeleteVote,
-} from "../hooks/useSubmissions";
+  useFinalizeVotes,
+  useVoteSummary,
+} from "../hooks/useVotes";
 import { useRound } from "../hooks/useRounds";
 import { useGroupRoundMembers } from "../hooks/useGroups";
 import {
@@ -35,6 +38,12 @@ interface RoundDetailScreenProps {
   onEditRoundPress?: (round: Round) => void;
 }
 
+// Debounced vote state management
+interface VoteState {
+  count: number;
+  comment: string;
+}
+
 export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
   round: initialRound,
   group,
@@ -43,7 +52,14 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
   onEditRoundPress,
 }) => {
   const { user } = useAuth();
-  const [votingState, setVotingState] = useState<Record<string, number>>({});
+  const [votingState, setVotingState] = useState<Record<string, VoteState>>({});
+  const [autoSaveStatus, setAutoSaveStatus] = useState<
+    Record<string, "saving" | "saved" | "error">
+  >({});
+
+  // Refs for debouncing
+  const saveTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
+  const pendingVotes = useRef<Record<string, VoteState>>({});
 
   // Fetch fresh round data using the hook with initial data to avoid loading screen
   const { data: round = initialRound, isLoading: isLoadingRound } = useRound(
@@ -55,14 +71,16 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
   const { data: groupMembers = [], isLoading: isLoadingMembers } =
     useGroupRoundMembers(group.id, round.id);
 
+  // Get vote summary for the round
+  const { data: voteSummary } = useVoteSummary(round.id, user?.id || "");
+
   const createVoteMutation = useCreateVote();
   const updateVoteMutation = useUpdateVote();
   const deleteVoteMutation = useDeleteVote();
+  const finalizeVotesMutation = useFinalizeVotes();
 
-  const isLoading =
-    createVoteMutation.isPending ||
-    updateVoteMutation.isPending ||
-    deleteVoteMutation.isPending;
+  // Remove the global loading state for vote operations
+  const isGlobalLoading = finalizeVotesMutation.isPending;
 
   // Use the group prop instead of round.group
   const isAdmin = group?.admin?.id === user?.id;
@@ -71,6 +89,30 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
   );
   const canSubmit = round.status === "SUBMISSION" && !userSubmission;
   const canVote = round.status === "VOTING";
+  const votesAreFinalized = voteSummary?.hasFinalizedVotes || false;
+
+  // Initialize voting state from current votes
+  useEffect(() => {
+    if (!round.submissions || !user) return;
+
+    const initialState: Record<string, VoteState> = {};
+    round.submissions.forEach((submission) => {
+      const userVote = submission.votes?.find((v) => v.user?.id === user.id);
+      initialState[submission.id] = {
+        count: userVote?.count || 0,
+        comment: userVote?.comment || "",
+      };
+    });
+    setVotingState(initialState);
+  }, [round.submissions, user]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      // Clear all pending timeouts
+      Object.values(saveTimeouts.current).forEach(clearTimeout);
+    };
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -122,68 +164,210 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
   };
 
   const getTotalUserVotes = () => {
-    return (round.submissions || []).reduce((total, submission) => {
-      const userVote = submission.votes?.find((v) => v.user?.id === user?.id);
-      return total + (userVote ? userVote.count : 0);
-    }, 0);
+    return Object.values(votingState).reduce(
+      (total, state) => total + state.count,
+      0
+    );
   };
 
   const getRemainingVotes = () => {
     return (group?.votesPerUserPerRound || 0) - getTotalUserVotes();
   };
 
-  const handleVote = async (submissionId: string, voteCount: number) => {
-    if (!canVote) return;
-
-    const currentVotes = getUserVoteCount(
-      round.submissions.find((s) => s.id === submissionId)!
-    );
-    const voteDifference = voteCount - currentVotes;
-
-    if (
-      getTotalUserVotes() + voteDifference >
-      (group?.votesPerUserPerRound || 0)
-    ) {
-      Alert.alert("Vote Limit", "You don't have enough votes remaining.");
-      return;
-    }
-
-    if (voteCount > (group?.maxVotesPerSong || 0)) {
-      Alert.alert(
-        "Vote Limit",
-        `You can only give up to ${group?.maxVotesPerSong || 0} votes per song.`
-      );
-      return;
-    }
-
-    try {
-      const existingVote = round.submissions
-        .find((s) => s.id === submissionId)
-        ?.votes.find((v) => v.user.id === user?.id);
-
-      if (voteCount === 0 && existingVote) {
-        // Delete vote
-        await deleteVoteMutation.mutateAsync({
-          submissionId,
-          voteId: existingVote.id,
-        });
-      } else if (existingVote) {
-        // Update existing vote
-        await updateVoteMutation.mutateAsync({
-          submissionId,
-          voteId: existingVote.id,
-          data: { count: voteCount },
-        });
-      } else if (voteCount > 0) {
-        // Create new vote
-        await createVoteMutation.mutateAsync({
-          submissionId,
-          count: voteCount,
-        });
+  // Debounced save function
+  const debouncedSave = useCallback(
+    async (submissionId: string, voteState: VoteState) => {
+      // Clear any existing timeout
+      if (saveTimeouts.current[submissionId]) {
+        clearTimeout(saveTimeouts.current[submissionId]);
       }
-    } catch (error) {
-      Alert.alert("Error", "Failed to submit vote. Please try again.");
-    }
+
+      // Store the pending vote state
+      pendingVotes.current[submissionId] = voteState;
+
+      // Set up new timeout
+      saveTimeouts.current[submissionId] = setTimeout(async () => {
+        const currentPendingVote = pendingVotes.current[submissionId];
+        if (!currentPendingVote) return;
+
+        // Set saving status
+        setAutoSaveStatus((prev) => ({ ...prev, [submissionId]: "saving" }));
+
+        try {
+          const submission = round.submissions?.find(
+            (s) => s.id === submissionId
+          );
+          if (!submission) return;
+
+          const existingVote = submission.votes?.find(
+            (v) => v.user?.id === user?.id
+          );
+
+          if (
+            currentPendingVote.count === 0 &&
+            !currentPendingVote.comment.trim() &&
+            existingVote
+          ) {
+            // Delete vote if no count and no comment
+            await deleteVoteMutation.mutateAsync({
+              submissionId,
+              voteId: existingVote.id,
+            });
+          } else if (existingVote) {
+            // Update existing vote (handles both count > 0 and count === 0 with comment)
+            await updateVoteMutation.mutateAsync({
+              submissionId,
+              voteId: existingVote.id,
+              count: currentPendingVote.count,
+              comment: currentPendingVote.comment.trim() || undefined,
+            });
+          } else if (
+            currentPendingVote.count > 0 ||
+            currentPendingVote.comment.trim()
+          ) {
+            // Create new vote if there's a count or a comment
+            await createVoteMutation.mutateAsync({
+              submissionId,
+              count: currentPendingVote.count,
+              comment: currentPendingVote.comment.trim() || undefined,
+            });
+          }
+
+          // Set saved status
+          setAutoSaveStatus((prev) => ({ ...prev, [submissionId]: "saved" }));
+
+          // Clear status after 2 seconds
+          setTimeout(() => {
+            setAutoSaveStatus((prev) => {
+              const newState = { ...prev };
+              delete newState[submissionId];
+              return newState;
+            });
+          }, 2000);
+
+          // Clear pending vote
+          delete pendingVotes.current[submissionId];
+        } catch (error) {
+          // Set error status
+          setAutoSaveStatus((prev) => ({ ...prev, [submissionId]: "error" }));
+          console.error("Vote error:", error);
+
+          // Clear error status after 3 seconds
+          setTimeout(() => {
+            setAutoSaveStatus((prev) => {
+              const newState = { ...prev };
+              delete newState[submissionId];
+              return newState;
+            });
+          }, 3000);
+        }
+      }, 1000); // 1 second debounce
+    },
+    [
+      round.submissions,
+      user,
+      createVoteMutation,
+      updateVoteMutation,
+      deleteVoteMutation,
+    ]
+  );
+
+  const handleVoteChange = useCallback(
+    (submissionId: string, newCount: number) => {
+      if (!canVote || votesAreFinalized) return;
+
+      const submission = round.submissions?.find((s) => s.id === submissionId);
+      if (!submission) return;
+
+      const currentState = votingState[submissionId] || {
+        count: 0,
+        comment: "",
+      };
+      const currentTotalVotes = getTotalUserVotes();
+      const voteDifference = newCount - currentState.count;
+
+      // Check vote limits
+      if (
+        currentTotalVotes + voteDifference >
+        (group?.votesPerUserPerRound || 0)
+      ) {
+        Alert.alert("Vote Limit", "You don't have enough votes remaining.");
+        return;
+      }
+
+      if (newCount > (group?.maxVotesPerSong || 0)) {
+        Alert.alert(
+          "Vote Limit",
+          `You can only give up to ${
+            group?.maxVotesPerSong || 0
+          } votes per song.`
+        );
+        return;
+      }
+
+      // Update local state immediately for responsive UI
+      const newState = { ...currentState, count: Math.max(0, newCount) };
+      setVotingState((prev) => ({ ...prev, [submissionId]: newState }));
+
+      // Trigger debounced save
+      debouncedSave(submissionId, newState);
+    },
+    [
+      canVote,
+      round.submissions,
+      group,
+      votingState,
+      debouncedSave,
+      getTotalUserVotes,
+    ]
+  );
+
+  const handleCommentChange = useCallback(
+    (submissionId: string, newComment: string) => {
+      if (!canVote) return;
+
+      const currentState = votingState[submissionId] || {
+        count: 0,
+        comment: "",
+      };
+      const newState = { ...currentState, comment: newComment };
+
+      // Update local state immediately
+      setVotingState((prev) => ({ ...prev, [submissionId]: newState }));
+
+      // Save if there's a vote count OR a comment (to allow comments without votes)
+      if (newState.count > 0 || newState.comment.trim()) {
+        debouncedSave(submissionId, newState);
+      }
+    },
+    [canVote, votingState, debouncedSave]
+  );
+
+  const handleFinalizeVotes = async () => {
+    if (!voteSummary?.hasUnfinalizedVotes) return;
+
+    Alert.alert(
+      "Finalize Votes",
+      `Are you sure you want to finalize your ${voteSummary.totalVotesUsed} votes? You won't be able to change them after this.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Finalize",
+          style: "default",
+          onPress: async () => {
+            try {
+              await finalizeVotesMutation.mutateAsync(round.id);
+              Alert.alert("Success", "Your votes have been finalized!");
+            } catch (error) {
+              Alert.alert(
+                "Error",
+                "Failed to finalize votes. Please try again."
+              );
+            }
+          },
+        },
+      ]
+    );
   };
 
   const renderSubmissionCard = ({ item: submission }: { item: Submission }) => {
@@ -192,8 +376,15 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
       (s.votes || []).some((v) => v.user?.id === user?.id && v.count > 0)
     );
     const totalVotes = getTotalVotes(submission);
-    const userVotes = getUserVoteCount(submission);
     const isUserSubmission = submission.user?.id === user?.id;
+
+    // Get current vote state (local state for immediate UI updates)
+    const currentVoteState = votingState[submission.id] || {
+      count: 0,
+      comment: "",
+    };
+    const userVotes = currentVoteState.count;
+    const userComment = currentVoteState.comment;
 
     return (
       <View style={styles.submissionCard}>
@@ -217,7 +408,7 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
 
         {submission.comment && (
           <View style={styles.commentContainer}>
-            <Text style={styles.commentText}>"{submission.comment}"</Text>
+            <Text style={styles.commentText}>{submission.comment}</Text>
           </View>
         )}
 
@@ -230,23 +421,47 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
           </Text>
 
           <View style={styles.voteContainer}>
-            {userHasVotedInRound && (
-              <Text style={styles.voteCount}>
-                {totalVotes} vote{totalVotes !== 1 ? "s" : ""}
-              </Text>
+            {/* Show vote total prominently for completed rounds, or for other phases if user has voted */}
+            {(round.status === "COMPLETED" || userHasVotedInRound) && (
+              <View
+                style={[
+                  styles.voteDisplayContainer,
+                  round.status === "COMPLETED" &&
+                    styles.voteDisplayContainerCompleted,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.voteCount,
+                    round.status === "COMPLETED" && styles.voteCountCompleted,
+                  ]}
+                >
+                  {totalVotes}
+                </Text>
+                <Text
+                  style={[
+                    styles.voteCountLabel,
+                    round.status === "COMPLETED" &&
+                      styles.voteCountLabelCompleted,
+                  ]}
+                >
+                  vote{totalVotes !== 1 ? "s" : ""}
+                </Text>
+              </View>
             )}
 
-            {canVote && !isUserSubmission && (
+            {canVote && !isUserSubmission && !votesAreFinalized && (
               <View style={styles.voteControls}>
                 <TouchableOpacity
                   style={[
                     styles.voteButton,
                     userVotes > 0 && styles.voteButtonActive,
                   ]}
-                  onPress={() =>
-                    handleVote(submission.id, Math.max(0, userVotes - 1))
+                  onPress={() => handleVoteChange(submission.id, userVotes - 1)}
+                  disabled={
+                    userVotes === 0 ||
+                    autoSaveStatus[submission.id] === "saving"
                   }
-                  disabled={userVotes === 0 || isLoading}
                 >
                   <Text
                     style={[
@@ -258,7 +473,22 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
                   </Text>
                 </TouchableOpacity>
 
-                <Text style={styles.userVoteCount}>{userVotes}</Text>
+                <View style={styles.voteCountContainer}>
+                  <Text style={styles.userVoteCount}>{userVotes}</Text>
+                  {autoSaveStatus[submission.id] && (
+                    <View style={styles.autoSaveIndicator}>
+                      {autoSaveStatus[submission.id] === "saving" && (
+                        <ActivityIndicator size="small" color="#FFB000" />
+                      )}
+                      {autoSaveStatus[submission.id] === "saved" && (
+                        <Text style={styles.autoSaveText}>✓</Text>
+                      )}
+                      {autoSaveStatus[submission.id] === "error" && (
+                        <Text style={styles.autoSaveError}>!</Text>
+                      )}
+                    </View>
+                  )}
+                </View>
 
                 <TouchableOpacity
                   style={[
@@ -267,11 +497,11 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
                       getRemainingVotes() > 0 &&
                       styles.voteButtonActive,
                   ]}
-                  onPress={() => handleVote(submission.id, userVotes + 1)}
+                  onPress={() => handleVoteChange(submission.id, userVotes + 1)}
                   disabled={
                     userVotes >= (group?.maxVotesPerSong || 0) ||
                     getRemainingVotes() === 0 ||
-                    isLoading
+                    autoSaveStatus[submission.id] === "saving"
                   }
                 >
                   <Text
@@ -287,8 +517,92 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
                 </TouchableOpacity>
               </View>
             )}
+
+            {/* Show vote count for finalized votes */}
+            {votesAreFinalized && userVotes > 0 && (
+              <View style={styles.finalizedVoteDisplay}>
+                <Text style={styles.finalizedVoteText}>
+                  Your votes: {userVotes}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
+
+        {/* Comment input for voting */}
+        {canVote && !isUserSubmission && !votesAreFinalized && (
+          <View style={styles.commentInputContainer}>
+            <TextInput
+              style={styles.commentInput}
+              placeholder={
+                userVotes > 0
+                  ? "Add a comment about your votes..."
+                  : "Add a comment about this song..."
+              }
+              placeholderTextColor="#666666"
+              value={userComment}
+              onChangeText={(text) => handleCommentChange(submission.id, text)}
+              multiline
+              maxLength={500}
+              textAlignVertical="top"
+            />
+            <Text style={styles.commentCounter}>{userComment.length}/500</Text>
+          </View>
+        )}
+
+        {/* Show existing votes in voting/completed phases */}
+        {(round.status === "VOTING" || round.status === "COMPLETED") &&
+          submission.votes &&
+          submission.votes.length > 0 &&
+          (() => {
+            // For completed rounds, show all votes (with points or comments), ordered by points descending
+            // For voting rounds, only show votes with comments
+            const filteredVotes =
+              round.status === "COMPLETED"
+                ? submission.votes.filter(
+                    (vote) => vote.count > 0 || vote.comment
+                  )
+                : submission.votes.filter((vote) => vote.comment);
+
+            const sortedVotes =
+              round.status === "COMPLETED"
+                ? filteredVotes.sort((a, b) => {
+                    // Sort by count descending (3, 2, 1, 0), then by user name for ties
+                    if (b.count !== a.count) {
+                      return b.count - a.count;
+                    }
+                    return a.user.displayName.localeCompare(b.user.displayName);
+                  })
+                : filteredVotes;
+
+            return (
+              sortedVotes.length > 0 && (
+                <View style={styles.voteCommentsContainer}>
+                  <Text style={styles.voteCommentsTitle}>
+                    {round.status === "COMPLETED" ? "Votes:" : "Comments:"}
+                  </Text>
+                  {sortedVotes.map((vote) => (
+                    <View key={vote.id} style={styles.voteCommentItem}>
+                      <Text style={styles.voteCommentAuthor}>
+                        {vote.user.displayName}
+                        {vote.count > 0
+                          ? ` (${vote.count} vote${
+                              vote.count !== 1 ? "s" : ""
+                            })`
+                          : " (comment)"}
+                        :
+                      </Text>
+                      {vote.comment && (
+                        <Text style={styles.voteCommentText}>
+                          {vote.comment}
+                        </Text>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              )
+            );
+          })()}
       </View>
     );
   };
@@ -431,14 +745,54 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
 
         {canVote && (
           <View style={styles.votingInfo}>
-            <Text style={styles.sectionTitle}>Your Voting</Text>
-            <Text style={styles.votingStats}>
-              {getRemainingVotes()} of {group?.votesPerUserPerRound || 0} votes
-              remaining
-            </Text>
+            <View style={styles.votingHeader}>
+              <Text style={styles.sectionTitle}>Your Voting</Text>
+              {voteSummary?.hasUnfinalizedVotes && (
+                <TouchableOpacity
+                  style={[
+                    styles.finalizeButton,
+                    voteSummary.totalVotesUsed === 0 &&
+                      styles.finalizeButtonDisabled,
+                  ]}
+                  onPress={handleFinalizeVotes}
+                  disabled={
+                    voteSummary.totalVotesUsed === 0 ||
+                    finalizeVotesMutation.isPending
+                  }
+                >
+                  {finalizeVotesMutation.isPending ? (
+                    <ActivityIndicator size="small" color="#191414" />
+                  ) : (
+                    <Text style={styles.finalizeButtonText}>
+                      Finalize Votes
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View style={styles.votingStatsContainer}>
+              <Text style={styles.votingStats}>
+                {getTotalUserVotes()} of {group?.votesPerUserPerRound || 0}{" "}
+                votes used
+              </Text>
+              <Text style={styles.votingStatsSecondary}>
+                {getRemainingVotes()} remaining
+              </Text>
+            </View>
+
             <Text style={styles.votingHelpText}>
-              You can give up to {group?.maxVotesPerSong || 0} votes per song
+              You can give up to {group?.maxVotesPerSong || 0} votes per song.
+              Add comments to explain your choices!
             </Text>
+
+            {voteSummary?.hasFinalizedVotes && (
+              <View style={styles.finalizedIndicator}>
+                <Text style={styles.finalizedText}>
+                  ✓ Your votes have been finalized
+                </Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -516,7 +870,8 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
         </View>
       </ScrollView>
 
-      {isLoading && (
+      {/* Only show loading overlay for finalize operation */}
+      {isGlobalLoading && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color="#FFB000" />
         </View>
@@ -612,19 +967,64 @@ const styles = StyleSheet.create({
   },
   votingInfo: {
     paddingHorizontal: 20,
+    paddingTop: 20,
     paddingBottom: 20,
     borderBottomWidth: 1,
     borderBottomColor: "#404040",
+  },
+  votingHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  finalizeButton: {
+    backgroundColor: "#FFB000",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    minWidth: 100,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  finalizeButtonDisabled: {
+    backgroundColor: "#666666",
+    opacity: 0.6,
+  },
+  finalizeButtonText: {
+    color: "#191414",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  votingStatsContainer: {
+    marginBottom: 8,
   },
   votingStats: {
     fontSize: 16,
     color: "#FFB000",
     fontWeight: "500",
-    marginBottom: 4,
+    marginBottom: 2,
+  },
+  votingStatsSecondary: {
+    fontSize: 14,
+    color: "#B3B3B3",
   },
   votingHelpText: {
     fontSize: 14,
     color: "#B3B3B3",
+    marginBottom: 12,
+  },
+  finalizedIndicator: {
+    backgroundColor: "#282828",
+    borderRadius: 8,
+    padding: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: "#4CAF50",
+  },
+  finalizedText: {
+    fontSize: 14,
+    color: "#4CAF50",
+    fontWeight: "500",
   },
   submissions: {
     padding: 20,
@@ -717,11 +1117,39 @@ const styles = StyleSheet.create({
   voteContainer: {
     alignItems: "flex-end",
   },
+  voteDisplayContainer: {
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  voteDisplayContainerCompleted: {
+    backgroundColor: "#FFB000",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    minWidth: 60,
+  },
   voteCount: {
     fontSize: 14,
     color: "white",
     fontWeight: "500",
     marginBottom: 4,
+  },
+  voteCountCompleted: {
+    fontSize: 18,
+    color: "#191414",
+    fontWeight: "700",
+    lineHeight: 20,
+  },
+  voteCountLabel: {
+    fontSize: 12,
+    color: "white",
+    fontWeight: "400",
+  },
+  voteCountLabelCompleted: {
+    fontSize: 11,
+    color: "#191414",
+    fontWeight: "500",
+    lineHeight: 12,
   },
   voteControls: {
     flexDirection: "row",
@@ -747,12 +1175,48 @@ const styles = StyleSheet.create({
   voteButtonTextActive: {
     color: "#191414",
   },
+  voteButtonDisabled: {
+    backgroundColor: "#333333",
+    opacity: 0.5,
+  },
+  voteButtonTextDisabled: {
+    color: "#666666",
+  },
+  finalizedVoteDisplay: {
+    alignItems: "flex-end",
+    marginTop: 8,
+  },
+  finalizedVoteText: {
+    fontSize: 14,
+    color: "#B3B3B3",
+    fontStyle: "italic",
+  },
   userVoteCount: {
     fontSize: 16,
     color: "white",
     fontWeight: "600",
     minWidth: 20,
     textAlign: "center",
+  },
+  voteCountContainer: {
+    alignItems: "center",
+    minWidth: 40,
+  },
+  autoSaveIndicator: {
+    marginTop: 2,
+    height: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  autoSaveText: {
+    fontSize: 12,
+    color: "#4CAF50",
+    fontWeight: "600",
+  },
+  autoSaveError: {
+    fontSize: 12,
+    color: "#E53E3E",
+    fontWeight: "600",
   },
   emptyContainer: {
     alignItems: "center",
@@ -876,5 +1340,61 @@ const styles = StyleSheet.create({
     color: "#191414",
     fontSize: 14,
     fontWeight: "600",
+  },
+  commentInputContainer: {
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "#282828",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#404040",
+  },
+  commentInput: {
+    fontSize: 14,
+    color: "white",
+    padding: 0,
+    minHeight: 40,
+    textAlignVertical: "top",
+  },
+  commentInputDisabled: {
+    backgroundColor: "#1f1f1f",
+    color: "#666666",
+    opacity: 0.7,
+  },
+  commentCounter: {
+    fontSize: 12,
+    color: "#666666",
+    textAlign: "right",
+    marginTop: 4,
+  },
+  voteCommentsContainer: {
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "#282828",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#404040",
+  },
+  voteCommentsTitle: {
+    fontSize: 14,
+    color: "#B3B3B3",
+    fontWeight: "500",
+    marginBottom: 8,
+  },
+  voteCommentItem: {
+    marginBottom: 8,
+  },
+  voteCommentAuthor: {
+    fontSize: 13,
+    color: "#FFB000",
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  voteCommentText: {
+    fontSize: 13,
+    color: "#E0E0E0",
+    lineHeight: 18,
   },
 });

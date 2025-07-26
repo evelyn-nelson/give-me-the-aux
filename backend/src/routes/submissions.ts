@@ -113,7 +113,7 @@ router.post(
             imageUrl: imageUrl?.trim() || null,
             previewUrl: previewUrl?.trim() || null,
             spotifyUrl: spotifyUrl.trim(),
-            // comment: comment?.trim() || null, // TODO: Fix Prisma client issue
+            comment: comment?.trim() || null,
           },
           include: {
             user: {
@@ -145,7 +145,7 @@ router.post(
             imageUrl: imageUrl?.trim() || null,
             previewUrl: previewUrl?.trim() || null,
             spotifyUrl: spotifyUrl.trim(),
-            // comment: comment?.trim() || null, // TODO: Fix Prisma client issue
+            comment: comment?.trim() || null,
           },
           include: {
             user: {

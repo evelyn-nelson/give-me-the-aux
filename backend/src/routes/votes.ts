@@ -78,8 +78,15 @@ router.post(
       const { count, comment } = req.body;
       const userId = req.user!.id;
 
-      if (!count || count < 1) {
-        return res.status(400).json({ error: "Vote count must be at least 1" });
+      // Allow 0 count if there's a comment, otherwise require at least 1
+      if (
+        (!count && count !== 0) ||
+        count < 0 ||
+        (count === 0 && (!comment || !comment.trim()))
+      ) {
+        return res.status(400).json({
+          error: "Vote count must be at least 1, or 0 with a comment",
+        });
       }
 
       // Validate comment length
@@ -227,8 +234,15 @@ router.put(
       const { count, comment } = req.body;
       const userId = req.user!.id;
 
-      if (!count || count < 1) {
-        return res.status(400).json({ error: "Vote count must be at least 1" });
+      // Allow 0 count if there's a comment, otherwise require at least 1
+      if (
+        (!count && count !== 0) ||
+        count < 0 ||
+        (count === 0 && (!comment || !comment.trim()))
+      ) {
+        return res.status(400).json({
+          error: "Vote count must be at least 1, or 0 with a comment",
+        });
       }
 
       // Validate comment length

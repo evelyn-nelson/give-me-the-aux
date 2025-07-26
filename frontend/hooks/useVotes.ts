@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApi } from "./useApi";
 import { Vote, CreateVoteData, FinalizeVotesResponse } from "../types/api";
+import { submissionKeys } from "./useSubmissions";
+import { roundKeys } from "./useRounds";
 
 // Vote query keys for cache management
 export const voteKeys = {
@@ -47,12 +49,17 @@ export const useCreateVote = () => {
 
       // Invalidate submission detail to refresh vote count
       queryClient.invalidateQueries({
-        queryKey: ["submissions", variables.submissionId],
+        queryKey: submissionKeys.detail(variables.submissionId),
       });
 
       // Invalidate submissions list to refresh vote counts
       queryClient.invalidateQueries({
-        queryKey: ["submissions"],
+        queryKey: submissionKeys.lists(),
+      });
+
+      // CRITICAL FIX: Invalidate round queries to refresh vote data in RoundDetailScreen
+      queryClient.invalidateQueries({
+        queryKey: roundKeys.all,
       });
     },
   });
@@ -70,10 +77,10 @@ export const useUpdateVote = () => {
       count: number;
       comment?: string;
     }) => {
-      const { submissionId, voteId, ...updateData } = data;
+      const { submissionId, voteId, count, comment } = data;
       const response = await api.put(
         `/api/submissions/${submissionId}/votes/${voteId}`,
-        updateData
+        { count, comment }
       );
       return response.data as Vote;
     },
@@ -85,12 +92,17 @@ export const useUpdateVote = () => {
 
       // Invalidate submission detail to refresh vote count
       queryClient.invalidateQueries({
-        queryKey: ["submissions", variables.submissionId],
+        queryKey: submissionKeys.detail(variables.submissionId),
       });
 
       // Invalidate submissions list to refresh vote counts
       queryClient.invalidateQueries({
-        queryKey: ["submissions"],
+        queryKey: submissionKeys.lists(),
+      });
+
+      // CRITICAL FIX: Invalidate round queries to refresh vote data in RoundDetailScreen
+      queryClient.invalidateQueries({
+        queryKey: roundKeys.all,
       });
     },
   });
@@ -114,12 +126,17 @@ export const useDeleteVote = () => {
 
       // Invalidate submission detail to refresh vote count
       queryClient.invalidateQueries({
-        queryKey: ["submissions", variables.submissionId],
+        queryKey: submissionKeys.detail(variables.submissionId),
       });
 
       // Invalidate submissions list to refresh vote counts
       queryClient.invalidateQueries({
-        queryKey: ["submissions"],
+        queryKey: submissionKeys.lists(),
+      });
+
+      // CRITICAL FIX: Invalidate round queries to refresh vote data in RoundDetailScreen
+      queryClient.invalidateQueries({
+        queryKey: roundKeys.all,
       });
     },
   });
@@ -145,7 +162,7 @@ export const useFinalizeVotes = () => {
 
       // Invalidate submissions for this round
       queryClient.invalidateQueries({
-        queryKey: ["submissions", "round", roundId],
+        queryKey: submissionKeys.list(roundId),
       });
 
       // Invalidate round details
@@ -155,7 +172,12 @@ export const useFinalizeVotes = () => {
 
       // Invalidate all submissions lists
       queryClient.invalidateQueries({
-        queryKey: ["submissions"],
+        queryKey: submissionKeys.lists(),
+      });
+
+      // CRITICAL FIX: Invalidate round queries to refresh vote data in RoundDetailScreen
+      queryClient.invalidateQueries({
+        queryKey: roundKeys.all,
       });
     },
   });
@@ -188,11 +210,11 @@ export const useUserVotesInRound = (roundId: string) => {
 };
 
 // Helper hook to get vote summary for a round
-export const useVoteSummary = (roundId: string) => {
+export const useVoteSummary = (roundId: string, userId: string) => {
   const api = useApi();
 
   return useQuery({
-    queryKey: ["votes", "summary", roundId],
+    queryKey: ["votes", "summary", roundId, userId],
     queryFn: async () => {
       const response = await api.get(`/api/submissions/round/${roundId}`);
       const submissions = response.data;
@@ -200,15 +222,20 @@ export const useVoteSummary = (roundId: string) => {
       let totalVotesUsed = 0;
       let hasUnfinalizedVotes = false;
       let hasFinalizedVotes = false;
+      const userVotes: Vote[] = [];
 
       submissions.forEach((submission: any) => {
         if (submission.votes) {
           submission.votes.forEach((vote: Vote) => {
-            totalVotesUsed += vote.count;
-            if (vote.isFinalized) {
-              hasFinalizedVotes = true;
-            } else {
-              hasUnfinalizedVotes = true;
+            // Only count votes from the current user
+            if (vote.user.id === userId) {
+              userVotes.push(vote);
+              totalVotesUsed += vote.count;
+              if (vote.isFinalized) {
+                hasFinalizedVotes = true;
+              } else {
+                hasUnfinalizedVotes = true;
+              }
             }
           });
         }
@@ -219,8 +246,9 @@ export const useVoteSummary = (roundId: string) => {
         hasUnfinalizedVotes,
         hasFinalizedVotes,
         canFinalize: hasUnfinalizedVotes && !hasFinalizedVotes,
+        userVotes,
       };
     },
-    enabled: !!roundId,
+    enabled: !!roundId && !!userId,
   });
 };
