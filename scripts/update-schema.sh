@@ -43,7 +43,12 @@ update_prisma() {
     check_host_prisma
     
     echo "📦 Generating Prisma client on HOST (for editor integration)..."
-    cd backend && npx prisma generate
+    if [ -d "backend" ]; then
+        (cd backend && npx prisma generate)
+    else
+        echo "⚠️  Backend directory not found, trying from current directory..."
+        npx prisma generate
+    fi
     
     echo "📦 Generating Prisma client in CONTAINER..."
     docker compose --profile tools run --rm prisma generate
@@ -52,7 +57,12 @@ update_prisma() {
     docker compose --profile tools run --rm prisma db push --accept-data-loss
     
     echo "🔄 Regenerating Prisma client on HOST after schema push..."
-    cd backend && npx prisma generate
+    if [ -d "backend" ]; then
+        (cd backend && npx prisma generate)
+    else
+        echo "⚠️  Backend directory not found, trying from current directory..."
+        npx prisma generate
+    fi
     
     echo "🔄 Regenerating Prisma client in CONTAINER after schema push..."
     docker compose --profile tools run --rm prisma generate

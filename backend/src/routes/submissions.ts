@@ -380,4 +380,175 @@ router.delete(
   }
 );
 
+// Finalize all votes for a user in a round
+router.post(
+  "/rounds/:roundId/votes/finalize",
+  apiRoutesLimiter,
+  requireAuth,
+  async (req: AuthRequest, res) => {
+    try {
+      const { roundId } = req.params;
+      const userId = req.user!.id;
+
+      // Check if round exists and user has access
+      const round = await prisma.round.findUnique({
+        where: { id: roundId },
+        include: {
+          group: {
+            include: {
+              members: {
+                where: { userId: userId },
+              },
+            },
+          },
+        },
+      });
+
+      if (!round) {
+        return res.status(404).json({ error: "Round not found" });
+      }
+
+      // Check if user is a member of the group
+      if (round.group.members.length === 0) {
+        return res
+          .status(403)
+          .json({ error: "You are not a member of this group" });
+      }
+
+      // Check if round is in voting phase
+      if (round.status !== "VOTING") {
+        return res.status(400).json({
+          error: "Votes can only be finalized during the voting phase",
+        });
+      }
+
+      // Check if voting period has ended
+      const now = new Date();
+      if (now > round.endDate) {
+        return res.status(400).json({
+          error: "Voting period has ended",
+        });
+      }
+
+      // Get all user's votes for this round
+      const userVotes = await prisma.vote.findMany({
+        where: {
+          userId: userId,
+          submission: {
+            roundId: roundId,
+          },
+        },
+        include: {
+          submission: {
+            include: {
+              user: { select: { id: true } },
+            },
+          },
+        },
+      });
+
+      if (userVotes.length === 0) {
+        return res.status(400).json({
+          error: "No votes found to finalize",
+        });
+      }
+
+      // Check if any votes are already finalized
+      const alreadyFinalized = userVotes.filter((vote) => vote.isFinalized);
+      if (alreadyFinalized.length > 0) {
+        return res.status(400).json({
+          error: "Some votes are already finalized and cannot be changed",
+        });
+      }
+
+      // Validate voting limits before finalizing
+      const totalVoteCount = userVotes.reduce(
+        (sum, vote) => sum + vote.count,
+        0
+      );
+
+      if (totalVoteCount > round.group.votesPerUserPerRound) {
+        return res.status(400).json({
+          error: `Total votes (${totalVoteCount}) exceed the limit of ${round.group.votesPerUserPerRound} votes per round`,
+        });
+      }
+
+      // Check max votes per song limit
+      const votesBySubmission = userVotes.reduce((acc, vote) => {
+        acc[vote.submissionId] = (acc[vote.submissionId] || 0) + vote.count;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const violatingSubmissions = Object.entries(votesBySubmission).filter(
+        ([_, count]) => count > round.group.maxVotesPerSong
+      );
+
+      if (violatingSubmissions.length > 0) {
+        return res.status(400).json({
+          error: `Cannot vote more than ${round.group.maxVotesPerSong} times on a single song`,
+        });
+      }
+
+      // Verify user hasn't voted on their own submissions
+      const ownSubmissionVotes = userVotes.filter(
+        (vote) => vote.submission.user.id === userId
+      );
+
+      if (ownSubmissionVotes.length > 0) {
+        return res.status(400).json({
+          error: "Cannot vote on your own submissions",
+        });
+      }
+
+      // Finalize all votes in a transaction
+      const finalizedVotes = await prisma.$transaction(async (tx) => {
+        const voteIds = userVotes.map((vote) => vote.id);
+
+        await tx.vote.updateMany({
+          where: {
+            id: { in: voteIds },
+          },
+          data: {
+            isFinalized: true,
+          },
+        });
+
+        // Return the updated votes with user info
+        return await tx.vote.findMany({
+          where: {
+            id: { in: voteIds },
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                displayName: true,
+                avatarUrl: true,
+              },
+            },
+            submission: {
+              select: {
+                id: true,
+                trackName: true,
+                artistName: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        });
+      });
+
+      res.json({
+        data: finalizedVotes,
+        message: `Successfully finalized ${finalizedVotes.length} votes`,
+        totalVotesUsed: totalVoteCount,
+        votesPerRoundLimit: round.group.votesPerUserPerRound,
+      });
+    } catch (error) {
+      console.error("Finalize votes error:", error);
+      res.status(500).json({ error: "Failed to finalize votes" });
+    }
+  }
+);
+
 export default router;

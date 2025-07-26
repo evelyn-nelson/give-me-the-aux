@@ -10,6 +10,7 @@ export interface Vote {
   id: string;
   count: number;
   comment?: string;
+  isFinalized: boolean;
   user: User;
 }
 
@@ -126,6 +127,21 @@ export interface CreateVoteData {
   submissionId: string;
   count: number;
   comment?: string;
+}
+
+export interface FinalizeVotesResponse {
+  data: Array<
+    Vote & {
+      submission: {
+        id: string;
+        trackName: string;
+        artistName: string;
+      };
+    }
+  >;
+  message: string;
+  totalVotesUsed: number;
+  votesPerRoundLimit: number;
 }
 
 export interface ReorderRoundsData {

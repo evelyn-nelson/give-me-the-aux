@@ -32,7 +32,12 @@ echo "🔧 Checking host Prisma CLI..."
 check_host_prisma
 
 echo "📦 Regenerating Prisma client on HOST (for editor integration)..."
-cd backend && npx prisma generate
+if [ -d "backend" ]; then
+    (cd backend && npx prisma generate)
+else
+    echo "⚠️  Backend directory not found, trying from current directory..."
+    npx prisma generate
+fi
 
 echo "📦 Regenerating Prisma client in CONTAINER..."
 docker compose --profile tools run --rm prisma generate
