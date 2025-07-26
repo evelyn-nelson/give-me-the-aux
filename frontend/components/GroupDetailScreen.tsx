@@ -78,6 +78,39 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
     });
   };
 
+  // Sort rounds: current round first, then upcoming rounds in order, then finished rounds in reverse order
+  const getSortedRounds = (rounds: Round[]) => {
+    if (!rounds || rounds.length === 0) return [];
+
+    // Separate rounds by status
+    const currentRounds = rounds.filter(
+      (round) => round.status === "SUBMISSION" || round.status === "VOTING"
+    );
+
+    const upcomingRounds = rounds.filter(
+      (round) => round.status === "INACTIVE"
+    );
+
+    const finishedRounds = rounds.filter(
+      (round) => round.status === "COMPLETED"
+    );
+
+    const sortedCurrentRounds = currentRounds.sort((a, b) => a.order - b.order);
+    const sortedUpcomingRounds = upcomingRounds.sort(
+      (a, b) => a.order - b.order
+    );
+    const sortedFinishedRounds = finishedRounds.sort(
+      (a, b) => b.order - a.order
+    );
+    const sortedRounds = [
+      ...sortedCurrentRounds,
+      ...sortedUpcomingRounds,
+      ...sortedFinishedRounds,
+    ];
+
+    return sortedRounds;
+  };
+
   const handleDeleteGroup = () => {
     Alert.alert(
       "Delete Group",
@@ -132,8 +165,6 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
           {formatDate(round.startDate)} - {formatDate(round.endDate)}
         </Text>
       </View>
-
-      <Text style={styles.chevron}>›</Text>
     </TouchableOpacity>
   );
 
@@ -236,7 +267,7 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
             )}
 
             <FlatList
-              data={currentGroup.rounds || []}
+              data={getSortedRounds(currentGroup.rounds || [])}
               renderItem={renderRoundCard}
               keyExtractor={(item) => item.id}
               scrollEnabled={false}

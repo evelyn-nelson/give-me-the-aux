@@ -117,13 +117,6 @@ export const GroupsNavigator: React.FC = () => {
     });
   };
 
-  const handleGroupEdited = (group: Group) => {
-    setScreenState({
-      screen: "group-detail",
-      selectedGroup: group,
-    });
-  };
-
   const handleRoundEdited = (round: Round) => {
     setScreenState({
       screen: "round-detail",
@@ -180,7 +173,7 @@ export const GroupsNavigator: React.FC = () => {
             onCreateRoundPress={(groupId) =>
               navigateToCreateRound(groupId, screenState.selectedGroup!.name)
             }
-            onEditGroupPress={handleGroupEdited}
+            onEditGroupPress={navigateToEditGroup}
           />
         );
 
