@@ -9,6 +9,7 @@ import roundRoutes from "./routes/rounds";
 import submissionRoutes from "./routes/submissions";
 import voteRoutes from "./routes/votes";
 import { TokenCleanupService } from "./services/tokenCleanup";
+import { RoundManagementService } from "./services/roundManagement";
 
 // Load environment variables
 if (process.env.NODE_ENV !== "production") {
@@ -44,4 +45,5 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 
   TokenCleanupService.startCleanupJob();
+  RoundManagementService.startManagementJob();
 });
