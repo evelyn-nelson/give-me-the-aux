@@ -8,6 +8,7 @@ import {
   FlatList,
   ActivityIndicator,
   Alert,
+  Pressable,
 } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
 import { useDeleteGroup, useGroup } from "../hooks/useGroups";
@@ -137,8 +138,11 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
   };
 
   const renderRoundCard = ({ item: round }: { item: Round }) => (
-    <TouchableOpacity
-      style={styles.roundCard}
+    <Pressable
+      style={({ pressed }) => [
+        styles.roundCard,
+        pressed && styles.roundCardPressed,
+      ]}
       onPress={() => onRoundPress(round)}
     >
       <View style={styles.roundHeader}>
@@ -158,17 +162,25 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
         </View>
       </View>
 
-      <View style={styles.roundStats}>
-        <Text style={styles.statText}>
-          {round._count?.submissions || 0} submission
-          {(round._count?.submissions || 0) !== 1 ? "s" : ""}
+      <View style={styles.roundStatsRow}>
+        <View style={styles.roundStats}>
+          <Text style={styles.statText}>
+            {round._count?.submissions || 0} submission
+            {(round._count?.submissions || 0) !== 1 ? "s" : ""}
+          </Text>
+        </View>
+        <Text style={styles.chevron}>›</Text>
+      </View>
+
+      <View style={styles.roundDateContainer}>
+        <Text style={styles.roundDateLine}>
+          Start: {formatDate(round.startDate)}
         </Text>
-        <Text style={styles.statText}>•</Text>
-        <Text style={styles.statText}>
-          {formatDate(round.startDate)} - {formatDate(round.endDate)}
+        <Text style={styles.roundDateLine}>
+          End: {formatDate(round.endDate)}
         </Text>
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 
   // Calculate vote totals for each member across completed rounds
@@ -274,7 +286,7 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
               {currentGroup._count?.members || 0} member
               {(currentGroup._count?.members || 0) !== 1 ? "s" : ""}
             </Text>
-            <Text style={styles.statText}>•</Text>
+            <Text style={styles.statDot}>•</Text>
             <Text style={styles.statText}>
               {currentGroup._count?.rounds || 0} round
               {(currentGroup._count?.rounds || 0) !== 1 ? "s" : ""}
@@ -317,12 +329,15 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
         {activeTab === "rounds" ? (
           <View style={styles.tabContent}>
             {isAdmin && (
-              <TouchableOpacity
-                style={styles.createRoundButton}
+              <Pressable
+                style={({ pressed }) => [
+                  styles.createRoundButton,
+                  pressed && styles.createRoundButtonPressed,
+                ]}
                 onPress={() => onCreateRoundPress(currentGroup.id)}
               >
                 <Text style={styles.createRoundText}>+ Create New Round</Text>
-              </TouchableOpacity>
+              </Pressable>
             )}
 
             <FlatList
@@ -437,6 +452,11 @@ const styles = StyleSheet.create({
     color: "#B3B3B3",
     marginHorizontal: 4,
   },
+  statDot: {
+    fontSize: 16,
+    color: "#666666",
+    marginHorizontal: 4,
+  },
   createdDate: {
     fontSize: 14,
     color: "#B3B3B3",
@@ -476,6 +496,9 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     marginBottom: 20,
   },
+  createRoundButtonPressed: {
+    transform: [{ scale: 0.98 }],
+  },
   createRoundText: {
     color: "#191414",
     fontSize: 14,
@@ -488,13 +511,15 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: "#404040",
-    position: "relative",
+  },
+  roundCardPressed: {
+    borderColor: "#FFB000",
+    transform: [{ scale: 0.99 }],
   },
   roundHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 8,
   },
   roundInfo: {
     flex: 1,
@@ -520,17 +545,29 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "white",
   },
+  roundStatsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
   roundStats: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    flex: 1,
+    flexWrap: "wrap",
   },
   chevron: {
-    position: "absolute",
-    right: 16,
-    bottom: 16,
-    fontSize: 20,
+    fontSize: 24,
     color: "#B3B3B3",
+  },
+  roundDateContainer: {
+    marginTop: 6,
+  },
+  roundDateLine: {
+    fontSize: 14,
+    color: "#B3B3B3",
+    lineHeight: 18,
   },
   memberCard: {
     flexDirection: "row",
@@ -580,6 +617,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#B3B3B3",
     fontWeight: "500",
+  },
+  statTextDate: {
+    flexShrink: 1,
   },
   emptyContainer: {
     alignItems: "center",

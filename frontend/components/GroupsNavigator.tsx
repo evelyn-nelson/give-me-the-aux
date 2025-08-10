@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, Text, TouchableOpacity } from "react-native";
 import { GroupListScreen } from "./GroupListScreen";
 import { CreateGroupScreen } from "./CreateGroupScreen";
 import { GroupDetailScreen } from "./GroupDetailScreen";
@@ -8,6 +8,8 @@ import { RoundDetailScreen } from "./RoundDetailScreen";
 import { EditGroupScreen } from "./EditGroupScreen";
 import { SubmitSongScreen } from "./SubmitSongScreen";
 import { Group, Round, Submission } from "../types/api";
+import { SettingsScreen } from "./SettingsScreen";
+import { Ionicons } from "@expo/vector-icons";
 
 type ScreenType =
   | "list"
@@ -16,7 +18,8 @@ type ScreenType =
   | "create-round"
   | "round-detail"
   | "edit-group"
-  | "submit-song";
+  | "submit-song"
+  | "settings";
 
 interface ScreenState {
   screen: ScreenType;
@@ -73,6 +76,10 @@ export const GroupsNavigator: React.FC = () => {
       selectedGroup: group,
       existingSubmission,
     });
+  };
+
+  const navigateToSettings = () => {
+    setScreenState({ screen: "settings" });
   };
 
   const handleGroupCreated = () => {
@@ -152,6 +159,7 @@ export const GroupsNavigator: React.FC = () => {
           <GroupListScreen
             onGroupPress={navigateToGroupDetail}
             onCreateGroupPress={navigateToCreateGroup}
+            onOpenSettings={navigateToSettings}
           />
         );
 
@@ -281,6 +289,24 @@ export const GroupsNavigator: React.FC = () => {
           />
         );
 
+      case "settings":
+        return (
+          <View style={styles.container}>
+            <View style={styles.settingsHeader}>
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={navigateToGroupList}
+                accessibilityLabel="Back to groups"
+              >
+                <Ionicons name="chevron-back" size={20} color="#FFB000" />
+                <Text style={styles.backButtonText}>Back</Text>
+              </TouchableOpacity>
+              <Text style={styles.settingsTitle}>Settings</Text>
+            </View>
+            <SettingsScreen />
+          </View>
+        );
+
       default:
         return null;
     }
@@ -293,5 +319,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#191414",
+  },
+  settingsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "#404040",
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 15,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  backButtonText: {
+    color: "#FFB000",
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  settingsTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "white",
   },
 });

@@ -11,15 +11,18 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { useGroups } from "../hooks/useGroups";
 import { Group } from "../types/api";
+import { Ionicons } from "@expo/vector-icons";
 
 interface GroupListScreenProps {
   onGroupPress: (group: Group) => void;
   onCreateGroupPress: () => void;
+  onOpenSettings: () => void;
 }
 
 export const GroupListScreen: React.FC<GroupListScreenProps> = ({
   onGroupPress,
   onCreateGroupPress,
+  onOpenSettings,
 }) => {
   const { user } = useAuth();
   const { data: groups = [], isLoading, error, refetch } = useGroups();
@@ -87,7 +90,7 @@ export const GroupListScreen: React.FC<GroupListScreenProps> = ({
           <Text style={styles.createdDate}>
             Created {new Date(group.createdAt).toLocaleDateString()}
           </Text>
-          <Text style={styles.chevron}>›</Text>
+          <Ionicons name="chevron-forward" size={20} color="#B3B3B3" />
         </View>
       </TouchableOpacity>
     );
@@ -116,7 +119,16 @@ export const GroupListScreen: React.FC<GroupListScreenProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>My Groups</Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={styles.settingsIconButton}
+            onPress={onOpenSettings}
+            accessibilityLabel="Open settings"
+          >
+            <Ionicons name="settings-outline" size={22} color="#B3B3B3" />
+          </TouchableOpacity>
+          <Text style={styles.title}>My Groups</Text>
+        </View>
         <TouchableOpacity
           style={styles.createButton}
           onPress={onCreateGroupPress}
@@ -171,6 +183,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 15,
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  settingsIconButton: {
+    padding: 6,
+    marginRight: 12,
   },
   title: {
     fontSize: 28,

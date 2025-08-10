@@ -1,5 +1,12 @@
 import React from "react";
-import { TouchableOpacity, Text, StyleSheet, View } from "react-native";
+import {
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  View,
+  Pressable,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 interface ChatFloatingButtonProps {
   onPress: () => void;
@@ -11,8 +18,16 @@ export const ChatFloatingButton: React.FC<ChatFloatingButtonProps> = ({
   unreadCount = 0,
 }) => {
   return (
-    <TouchableOpacity style={styles.floatingButton} onPress={onPress}>
-      <Text style={styles.chatIcon}>💬</Text>
+    <Pressable
+      style={({ pressed }) => [
+        styles.floatingButton,
+        pressed && styles.floatingButtonPressed,
+      ]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel="Open group chat"
+    >
+      <Ionicons name="chatbubble-ellipses" size={24} color="#191414" />
       {unreadCount > 0 && (
         <View style={styles.badge}>
           <Text style={styles.badgeText}>
@@ -20,7 +35,7 @@ export const ChatFloatingButton: React.FC<ChatFloatingButtonProps> = ({
           </Text>
         </View>
       )}
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
@@ -41,8 +56,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
   },
-  chatIcon: {
-    fontSize: 24,
+  floatingButtonPressed: {
+    transform: [{ scale: 0.97 }],
   },
   badge: {
     position: "absolute",

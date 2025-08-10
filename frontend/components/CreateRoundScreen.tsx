@@ -130,35 +130,41 @@ export const CreateRoundScreen: React.FC<CreateRoundScreenProps> = ({
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Round Details</Text>
+        <View style={styles.card}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Theme *</Text>
+            <TextInput
+              style={[styles.input, errors.theme && styles.inputError]}
+              value={formData.theme}
+              onChangeText={(text) => updateFormData("theme", text)}
+              placeholder="e.g., 'Songs that make you happy'"
+              placeholderTextColor="#666666"
+              selectionColor="#FFB000"
+              maxLength={100}
+              returnKeyType="done"
+            />
+            {errors.theme && (
+              <Text style={styles.errorText}>{errors.theme}</Text>
+            )}
+          </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Theme *</Text>
-          <TextInput
-            style={[styles.input, errors.theme && styles.inputError]}
-            value={formData.theme}
-            onChangeText={(text) => updateFormData("theme", text)}
-            placeholder="e.g., 'Songs that make you happy'"
-            placeholderTextColor="#666"
-            maxLength={100}
-          />
-          {errors.theme && <Text style={styles.errorText}>{errors.theme}</Text>}
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Description (optional)</Text>
-          <TextInput
-            style={[styles.textArea, errors.description && styles.inputError]}
-            value={formData.description}
-            onChangeText={(text) => updateFormData("description", text)}
-            placeholder="Add more details about this round..."
-            placeholderTextColor="#666"
-            multiline
-            numberOfLines={3}
-            maxLength={300}
-          />
-          {errors.description && (
-            <Text style={styles.errorText}>{errors.description}</Text>
-          )}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Description (optional)</Text>
+            <TextInput
+              style={[styles.textArea, errors.description && styles.inputError]}
+              value={formData.description}
+              onChangeText={(text) => updateFormData("description", text)}
+              placeholder="Add more details about this round..."
+              placeholderTextColor="#666666"
+              selectionColor="#FFB000"
+              multiline
+              numberOfLines={3}
+              maxLength={300}
+            />
+            {errors.description && (
+              <Text style={styles.errorText}>{errors.description}</Text>
+            )}
+          </View>
         </View>
       </View>
 
@@ -170,34 +176,29 @@ export const CreateRoundScreen: React.FC<CreateRoundScreenProps> = ({
             automatically based on your group settings.
           </Text>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Round Start Date *</Text>
-            <View style={{ alignSelf: "stretch" }}>
-              <DateTimePicker
-                testID="dateTimePicker"
-                minimumDate={new Date()}
-                value={selectedDate}
-                mode={"date"}
-                onChange={handleDateChange}
-                themeVariant="dark"
-                style={{
-                  marginLeft: -10,
-                }}
-              />
+          <View style={styles.card}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Round Start Date *</Text>
+              <View style={{ alignSelf: "stretch" }}>
+                <DateTimePicker
+                  testID="dateTimePicker"
+                  minimumDate={new Date()}
+                  value={selectedDate}
+                  mode={"date"}
+                  onChange={handleDateChange}
+                  themeVariant="dark"
+                  style={{
+                    marginLeft: -10,
+                  }}
+                />
+              </View>
+              {errors.startDate && (
+                <Text style={styles.errorText}>{errors.startDate}</Text>
+              )}
+              <Text style={styles.helpText}>
+                When members can start submitting songs
+              </Text>
             </View>
-            {/* <TextInput
-              style={[styles.input, errors.startDate && styles.inputError]}
-              value={formData.startDate}
-              onChangeText={(text) => updateFormData("startDate", text)}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="#666"
-            /> */}
-            {errors.startDate && (
-              <Text style={styles.errorText}>{errors.startDate}</Text>
-            )}
-            <Text style={styles.helpText}>
-              When members can start submitting songs
-            </Text>
           </View>
         </View>
       ) : (
@@ -224,20 +225,25 @@ export const CreateRoundScreen: React.FC<CreateRoundScreenProps> = ({
       )}
 
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={[
-            styles.createButton,
-            isLoading && styles.createButtonDisabled,
-          ]}
-          onPress={handleSubmit}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#191414" size="small" />
-          ) : (
-            <Text style={styles.createButtonText}>Create Round</Text>
-          )}
-        </TouchableOpacity>
+        <View style={styles.footerButtons}>
+          <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.createButton,
+              isLoading && styles.createButtonDisabled,
+            ]}
+            onPress={handleSubmit}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#191414" size="small" />
+            ) : (
+              <Text style={styles.createButtonText}>Create Round</Text>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
     </FormWrapper>
   );
@@ -256,12 +262,19 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "600",
     color: "white",
-    marginBottom: 4,
+    marginBottom: 8,
   },
   sectionSubtitle: {
     fontSize: 14,
     color: "#B3B3B3",
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  card: {
+    backgroundColor: "#282828",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#404040",
+    padding: 16,
   },
   inputGroup: {
     marginBottom: 20,
@@ -349,7 +362,13 @@ const styles = StyleSheet.create({
     borderTopColor: "#404040",
     marginTop: 24,
   },
+  footerButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
   createButton: {
+    flex: 1,
     backgroundColor: "#FFB000",
     paddingVertical: 14,
     borderRadius: 25,
@@ -360,6 +379,20 @@ const styles = StyleSheet.create({
   },
   createButtonText: {
     color: "#191414",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: "#282828",
+    borderWidth: 1,
+    borderColor: "#404040",
+    paddingVertical: 14,
+    borderRadius: 25,
+    alignItems: "center",
+  },
+  cancelButtonText: {
+    color: "white",
     fontSize: 16,
     fontWeight: "600",
   },

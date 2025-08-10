@@ -145,10 +145,9 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
-      month: "numeric",
+      month: "short",
       day: "numeric",
       year: "numeric",
-      hour: "2-digit",
     });
   };
 
@@ -446,6 +445,7 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
                     styles.voteCountLabel,
                     round.status === "COMPLETED" &&
                       styles.voteCountLabelCompleted,
+                    styles.voteCountLabelWrap,
                   ]}
                 >
                   vote{totalVotes !== 1 ? "s" : ""}
@@ -535,6 +535,7 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
         {/* Comment input for voting */}
         {canVote && !isUserSubmission && !votesAreFinalized && (
           <View style={styles.commentInputContainer}>
+            <Text style={styles.commentLabel}>Your comment</Text>
             <TextInput
               style={styles.commentInput}
               placeholder={
@@ -543,6 +544,7 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
                   : "Add a comment about this song..."
               }
               placeholderTextColor="#666666"
+              selectionColor="#FFB000"
               value={userComment}
               onChangeText={(text) => handleCommentChange(submission.id, text)}
               multiline
@@ -700,11 +702,6 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
-        {isAdmin && onEditRoundPress && round.status === "SUBMISSION" && (
-          <TouchableOpacity onPress={() => onEditRoundPress(round)}>
-            <Text style={styles.editText}>Edit</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -729,26 +726,33 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
           </Text>
         </View>
 
-        <View style={styles.timeline}>
+        <View style={styles.cardSection}>
           <Text style={styles.sectionTitle}>Timeline</Text>
-          <View style={styles.timelineItem}>
-            <Text style={styles.timelineLabel}>Submissions:</Text>
-            <Text style={styles.timelineDate}>
-              {formatDate(round.startDate)} -{" "}
-              {formatDate(round.votingStartDate)}
-            </Text>
-          </View>
-          <View style={styles.timelineItem}>
-            <Text style={styles.timelineLabel}>Voting:</Text>
-            <Text style={styles.timelineDate}>
-              {formatDate(round.votingStartDate)} - {formatDate(round.endDate)}
-            </Text>
+          <View style={styles.cardBody}>
+            <View style={styles.timelineItemColumn}>
+              <Text style={styles.timelineLabel}>Submissions</Text>
+              <Text style={styles.timelineDateFull}>
+                Start: {formatDate(round.startDate)}
+              </Text>
+              <Text style={styles.timelineDateFull}>
+                Voting Opens: {formatDate(round.votingStartDate)}
+              </Text>
+            </View>
+            <View style={styles.timelineItemColumn}>
+              <Text style={styles.timelineLabel}>Voting</Text>
+              <Text style={styles.timelineDateFull}>
+                Start: {formatDate(round.votingStartDate)}
+              </Text>
+              <Text style={styles.timelineDateFull}>
+                End: {formatDate(round.endDate)}
+              </Text>
+            </View>
           </View>
         </View>
 
         {canVote && (
-          <View style={styles.votingInfo}>
-            <View style={styles.votingHeader}>
+          <View style={styles.cardSection}>
+            <View style={styles.votingHeaderRow}>
               <Text style={styles.sectionTitle}>Your Voting</Text>
               {voteSummary?.hasUnfinalizedVotes && (
                 <TouchableOpacity
@@ -774,7 +778,7 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
               )}
             </View>
 
-            <View style={styles.votingStatsContainer}>
+            <View style={styles.cardBody}>
               <Text style={styles.votingStats}>
                 {getTotalUserVotes()} of {group?.votesPerUserPerRound || 0}{" "}
                 votes used
@@ -782,20 +786,18 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
               <Text style={styles.votingStatsSecondary}>
                 {getRemainingVotes()} remaining
               </Text>
+              <Text style={styles.votingHelpText}>
+                You can give up to {group?.maxVotesPerSong || 0} votes per song.
+                Add comments to explain your choices!
+              </Text>
+              {voteSummary?.hasFinalizedVotes && (
+                <View style={styles.finalizedIndicator}>
+                  <Text style={styles.finalizedText}>
+                    ✓ Your votes have been finalized
+                  </Text>
+                </View>
+              )}
             </View>
-
-            <Text style={styles.votingHelpText}>
-              You can give up to {group?.maxVotesPerSong || 0} votes per song.
-              Add comments to explain your choices!
-            </Text>
-
-            {voteSummary?.hasFinalizedVotes && (
-              <View style={styles.finalizedIndicator}>
-                <Text style={styles.finalizedText}>
-                  ✓ Your votes have been finalized
-                </Text>
-              </View>
-            )}
           </View>
         )}
 
@@ -882,7 +884,7 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
 
       <ChatFloatingButton
         onPress={() => setChatModalVisible(true)}
-        unreadCount={0} // TODO: Implement unread message count
+        unreadCount={0}
       />
 
       <ChatModal
@@ -954,6 +956,18 @@ const styles = StyleSheet.create({
     color: "#FFB000",
     fontWeight: "500",
   },
+  cardSection: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    backgroundColor: "#282828",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#404040",
+  },
+  cardBody: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
   timeline: {
     paddingHorizontal: 20,
     paddingBottom: 20,
@@ -965,20 +979,34 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "white",
     marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
   timelineItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 8,
+    alignItems: "flex-start",
+  },
+  timelineItemColumn: {
+    marginBottom: 10,
   },
   timelineLabel: {
     fontSize: 14,
     color: "#B3B3B3",
     fontWeight: "500",
+    paddingRight: 8,
   },
-  timelineDate: {
+  timelineDateFull: {
     fontSize: 14,
     color: "white",
+    marginTop: 2,
+    flexWrap: "wrap",
+  },
+  votingHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   votingInfo: {
     paddingHorizontal: 20,
@@ -1027,14 +1055,15 @@ const styles = StyleSheet.create({
   votingHelpText: {
     fontSize: 14,
     color: "#B3B3B3",
-    marginBottom: 12,
+    marginTop: 8,
   },
   finalizedIndicator: {
-    backgroundColor: "#282828",
+    backgroundColor: "#1f1f1f",
     borderRadius: 8,
     padding: 12,
     borderLeftWidth: 3,
     borderLeftColor: "#4CAF50",
+    marginTop: 12,
   },
   finalizedText: {
     fontSize: 14,
@@ -1135,6 +1164,7 @@ const styles = StyleSheet.create({
   voteDisplayContainer: {
     alignItems: "center",
     marginBottom: 4,
+    maxWidth: 120,
   },
   voteDisplayContainerCompleted: {
     backgroundColor: "#FFB000",
@@ -1165,6 +1195,9 @@ const styles = StyleSheet.create({
     color: "#191414",
     fontWeight: "500",
     lineHeight: 12,
+  },
+  voteCountLabelWrap: {
+    flexShrink: 1,
   },
   voteControls: {
     flexDirection: "row",
@@ -1364,6 +1397,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#404040",
+  },
+  commentLabel: {
+    fontSize: 12,
+    color: "#B3B3B3",
+    marginBottom: 6,
   },
   commentInput: {
     fontSize: 14,

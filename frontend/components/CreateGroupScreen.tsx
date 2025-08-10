@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Pressable,
 } from "react-native";
 import { useCreateGroup } from "../hooks/useGroups";
 import { FormWrapper } from "./FormWrapper";
@@ -97,18 +98,21 @@ export const CreateGroupScreen: React.FC<CreateGroupScreenProps> = ({
     <FormWrapper title="Create Group" onClose={onCancel}>
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Group Details</Text>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Group Name *</Text>
-          <TextInput
-            style={[styles.input, errors.name && styles.inputError]}
-            value={formData.name}
-            onChangeText={(text) => updateFormData("name", text)}
-            placeholder="Enter group name"
-            placeholderTextColor="#666"
-            maxLength={50}
-          />
-          {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+        <View style={styles.card}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Group Name *</Text>
+            <TextInput
+              style={[styles.input, errors.name && styles.inputError]}
+              value={formData.name}
+              onChangeText={(text) => updateFormData("name", text)}
+              placeholder="Enter group name"
+              placeholderTextColor="#666666"
+              selectionColor="#FFB000"
+              maxLength={50}
+              returnKeyType="done"
+            />
+            {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+          </View>
         </View>
       </View>
 
@@ -118,107 +122,137 @@ export const CreateGroupScreen: React.FC<CreateGroupScreenProps> = ({
           Configure how long rounds last and voting limits
         </Text>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Submission Duration (days)</Text>
-          <TextInput
-            style={[
-              styles.input,
-              errors.submissionDurationDays && styles.inputError,
-            ]}
-            value={formData.submissionDurationDays.toString()}
-            onChangeText={(text) =>
-              updateFormData("submissionDurationDays", parseInt(text) || "")
-            }
-            placeholder="3"
-            placeholderTextColor="#666"
-            keyboardType="numeric"
-          />
-          {errors.submissionDurationDays && (
-            <Text style={styles.errorText}>
-              {errors.submissionDurationDays}
+        <View style={styles.card}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Submission Duration (days)</Text>
+            <TextInput
+              style={[
+                styles.input,
+                errors.submissionDurationDays && styles.inputError,
+              ]}
+              value={formData.submissionDurationDays.toString()}
+              onChangeText={(text) =>
+                updateFormData("submissionDurationDays", parseInt(text) || "")
+              }
+              placeholder="3"
+              placeholderTextColor="#666666"
+              selectionColor="#FFB000"
+              keyboardType="numeric"
+              returnKeyType="done"
+            />
+            {errors.submissionDurationDays && (
+              <Text style={styles.errorText}>
+                {errors.submissionDurationDays}
+              </Text>
+            )}
+            <Text style={styles.helpText}>
+              How long members can submit songs
             </Text>
-          )}
-          <Text style={styles.helpText}>How long members can submit songs</Text>
-        </View>
+          </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Voting Duration (days)</Text>
-          <TextInput
-            style={[
-              styles.input,
-              errors.votingDurationDays && styles.inputError,
-            ]}
-            value={formData.votingDurationDays.toString()}
-            onChangeText={(text) =>
-              updateFormData("votingDurationDays", parseInt(text) || "")
-            }
-            placeholder="2"
-            placeholderTextColor="#666"
-            keyboardType="numeric"
-          />
-          {errors.votingDurationDays && (
-            <Text style={styles.errorText}>{errors.votingDurationDays}</Text>
-          )}
-          <Text style={styles.helpText}>How long members can vote</Text>
-        </View>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Voting Duration (days)</Text>
+            <TextInput
+              style={[
+                styles.input,
+                errors.votingDurationDays && styles.inputError,
+              ]}
+              value={formData.votingDurationDays.toString()}
+              onChangeText={(text) =>
+                updateFormData("votingDurationDays", parseInt(text) || "")
+              }
+              placeholder="2"
+              placeholderTextColor="#666666"
+              selectionColor="#FFB000"
+              keyboardType="numeric"
+              returnKeyType="done"
+            />
+            {errors.votingDurationDays && (
+              <Text style={styles.errorText}>{errors.votingDurationDays}</Text>
+            )}
+            <Text style={styles.helpText}>How long members can vote</Text>
+          </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Votes per User per Round</Text>
-          <TextInput
-            style={[
-              styles.input,
-              errors.votesPerUserPerRound && styles.inputError,
-            ]}
-            value={formData.votesPerUserPerRound.toString()}
-            onChangeText={(text) =>
-              updateFormData("votesPerUserPerRound", parseInt(text) || "")
-            }
-            placeholder="10"
-            placeholderTextColor="#666"
-            keyboardType="numeric"
-          />
-          {errors.votesPerUserPerRound && (
-            <Text style={styles.errorText}>{errors.votesPerUserPerRound}</Text>
-          )}
-          <Text style={styles.helpText}>Total votes each member gets</Text>
-        </View>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Votes per User per Round</Text>
+            <TextInput
+              style={[
+                styles.input,
+                errors.votesPerUserPerRound && styles.inputError,
+              ]}
+              value={formData.votesPerUserPerRound.toString()}
+              onChangeText={(text) =>
+                updateFormData("votesPerUserPerRound", parseInt(text) || "")
+              }
+              placeholder="10"
+              placeholderTextColor="#666666"
+              selectionColor="#FFB000"
+              keyboardType="numeric"
+              returnKeyType="done"
+            />
+            {errors.votesPerUserPerRound && (
+              <Text style={styles.errorText}>
+                {errors.votesPerUserPerRound}
+              </Text>
+            )}
+            <Text style={styles.helpText}>Total votes each member gets</Text>
+          </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Max Votes per Song</Text>
-          <TextInput
-            style={[styles.input, errors.maxVotesPerSong && styles.inputError]}
-            value={formData.maxVotesPerSong.toString()}
-            onChangeText={(text) =>
-              updateFormData("maxVotesPerSong", parseInt(text) || "")
-            }
-            placeholder="3"
-            placeholderTextColor="#666"
-            keyboardType="numeric"
-          />
-          {errors.maxVotesPerSong && (
-            <Text style={styles.errorText}>{errors.maxVotesPerSong}</Text>
-          )}
-          <Text style={styles.helpText}>
-            Maximum votes one song can receive from a user
-          </Text>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Max Votes per Song</Text>
+            <TextInput
+              style={[
+                styles.input,
+                errors.maxVotesPerSong && styles.inputError,
+              ]}
+              value={formData.maxVotesPerSong.toString()}
+              onChangeText={(text) =>
+                updateFormData("maxVotesPerSong", parseInt(text) || "")
+              }
+              placeholder="3"
+              placeholderTextColor="#666666"
+              selectionColor="#FFB000"
+              keyboardType="numeric"
+              returnKeyType="done"
+            />
+            {errors.maxVotesPerSong && (
+              <Text style={styles.errorText}>{errors.maxVotesPerSong}</Text>
+            )}
+            <Text style={styles.helpText}>
+              Maximum votes one song can receive from a user
+            </Text>
+          </View>
         </View>
       </View>
 
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={[
-            styles.createButton,
-            isLoading && styles.createButtonDisabled,
-          ]}
-          onPress={handleSubmit}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#191414" size="small" />
-          ) : (
-            <Text style={styles.createButtonText}>Create Group</Text>
-          )}
-        </TouchableOpacity>
+        <View style={styles.footerButtons}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.cancelButton,
+              pressed && styles.cancelButtonPressed,
+            ]}
+            onPress={onCancel}
+            disabled={isLoading}
+          >
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [
+              styles.createButton,
+              isLoading && styles.createButtonDisabled,
+              pressed && !isLoading && styles.createButtonPressed,
+            ]}
+            onPress={handleSubmit}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#191414" size="small" />
+            ) : (
+              <Text style={styles.createButtonText}>Create Group</Text>
+            )}
+          </Pressable>
+        </View>
       </View>
     </FormWrapper>
   );
@@ -232,12 +266,19 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "600",
     color: "white",
-    marginBottom: 4,
+    marginBottom: 8,
   },
   sectionSubtitle: {
     fontSize: 14,
     color: "#B3B3B3",
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  card: {
+    backgroundColor: "#282828",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#404040",
+    padding: 16,
   },
   inputGroup: {
     marginBottom: 20,
@@ -277,7 +318,31 @@ const styles = StyleSheet.create({
     borderTopColor: "#404040",
     marginTop: 24,
   },
+  footerButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: "#282828",
+    borderWidth: 1,
+    borderColor: "#404040",
+    paddingVertical: 14,
+    borderRadius: 25,
+    alignItems: "center",
+  },
+  cancelButtonPressed: {
+    borderColor: "#FFB000",
+    transform: [{ scale: 0.98 }],
+  },
+  cancelButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+  },
   createButton: {
+    flex: 1,
     backgroundColor: "#FFB000",
     paddingVertical: 14,
     borderRadius: 25,
@@ -285,6 +350,9 @@ const styles = StyleSheet.create({
   },
   createButtonDisabled: {
     opacity: 0.6,
+  },
+  createButtonPressed: {
+    transform: [{ scale: 0.98 }],
   },
   createButtonText: {
     color: "#191414",
