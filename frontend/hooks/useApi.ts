@@ -112,5 +112,17 @@ export const useApi = () => {
       });
       return response.data;
     },
+
+    // Notifications
+    registerPushToken: async (payload: {
+      token: string;
+      platform?: string;
+    }) => {
+      const response = await apiCall(`/api/notifications/token`, {
+        method: "POST",
+        body: payload,
+      });
+      return response.data;
+    },
   };
 };

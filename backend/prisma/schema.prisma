@@ -26,6 +26,7 @@ model User {
   submissions         Submission[]
   votes               Vote[]
   groupInvitesCreated GroupInvite[]
+  pushTokens          PushToken[]
 
   @@map("users")
 }
@@ -74,6 +75,7 @@ model Round {
   playlists       Playlist[]
   group           Group        @relation(fields: [groupId], references: [id])
   submissions     Submission[]
+  notificationEvents NotificationEvent[]
 
   @@unique([groupId, order])
   @@map("rounds")
@@ -189,6 +191,31 @@ model GroupInvite {
   @@map("group_invites")
 }
 
+model PushToken {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  token      String   @unique
+  platform   String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  lastUsedAt DateTime? @map("last_used_at")
+  isRevoked  Boolean  @default(false) @map("is_revoked")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("push_tokens")
+}
+
+model NotificationEvent {
+  id      String            @id @default(cuid())
+  roundId String            @map("round_id")
+  type    NotificationType
+  sentAt  DateTime?         @map("sent_at")
+  round   Round             @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  @@unique([roundId, type])
+  @@map("notification_events")
+}
+
 enum RoundStatus {
   SUBMISSION
   VOTING
@@ -202,4 +229,11 @@ enum PlaylistType {
   ROUND_ALL
   USER_SUBMISSIONS
   USER_VOTES
+}
+
+enum NotificationType {
+  SUBMISSION_ENDING_SOON
+  VOTING_STARTED
+  VOTING_ENDING_SOON
+  VOTING_ENDED
 }

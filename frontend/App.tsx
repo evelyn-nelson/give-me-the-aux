@@ -5,9 +5,13 @@ import { LoginScreen } from "./components/LoginScreen";
 import { MainNavigator } from "./components/MainNavigator";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { usePushNotifications } from "./hooks/usePushNotifications";
 
 const AppContent: React.FC = () => {
   const { user, isLoading } = useAuth();
+
+  // Temporarily register for push notifications on app start to trigger iOS prompt
+  usePushNotifications(true);
 
   if (isLoading) {
     return (

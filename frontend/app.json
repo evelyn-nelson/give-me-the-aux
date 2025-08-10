@@ -30,7 +30,12 @@
       "favicon": "./assets/favicon.png"
     },
     "scheme": "givemetheaux",
-    "plugins": ["expo-dev-client", "expo-secure-store", "expo-router"],
+    "plugins": [
+      "expo-dev-client",
+      "expo-secure-store",
+      "expo-router",
+      "expo-notifications"
+    ],
     "extra": {
       "eas": {
         "projectId": "4206862e-adc4-4ae3-b2a7-67a8bb9f7fcc"

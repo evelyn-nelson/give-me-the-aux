@@ -1,7 +1,13 @@
-import { PrismaClient, RoundStatus, PlaylistType } from "@prisma/client";
+import {
+  PrismaClient,
+  RoundStatus,
+  PlaylistType,
+  NotificationType,
+} from "@prisma/client";
 import * as cron from "node-cron";
 import { AuthService } from "./auth";
 import { SpotifyService } from "./spotify";
+import { sendToRoundMembers } from "./notifications";
 
 const prisma = new PrismaClient();
 
@@ -51,6 +57,34 @@ export class RoundManagementService {
 
       // Use a transaction to ensure consistency
       await prisma.$transaction(async (tx) => {
+        // 0. Notifications: SUBMISSION_ENDING_SOON (1 hour before votingStartDate)
+        const submissionEndingSoon = await tx.round.findMany({
+          where: {
+            status: RoundStatus.SUBMISSION,
+            votingStartDate: {
+              lte: new Date(now.getTime() + 60 * 60 * 1000),
+              gt: now,
+            },
+          },
+          select: { id: true },
+        });
+        for (const r of submissionEndingSoon) {
+          const alreadyExists = await tx.notificationEvent.findFirst({
+            where: {
+              roundId: r.id,
+              type: NotificationType.SUBMISSION_ENDING_SOON,
+            },
+          });
+          if (!alreadyExists) {
+            await tx.notificationEvent.create({
+              data: {
+                roundId: r.id,
+                type: NotificationType.SUBMISSION_ENDING_SOON,
+              },
+            });
+          }
+        }
+
         // 1. Advance rounds from INACTIVE to SUBMISSION
         const roundsToSubmission = await tx.round.updateMany({
           where: {
@@ -83,6 +117,18 @@ export class RoundManagementService {
           });
           roundsAdvancedToVoting = updateResult.count;
           votingRoundIds = roundsNeedingVoting.map((r) => r.id);
+
+          // Record VOTING_STARTED events
+          for (const r of roundsNeedingVoting) {
+            const exists = await tx.notificationEvent.findFirst({
+              where: { roundId: r.id, type: NotificationType.VOTING_STARTED },
+            });
+            if (!exists) {
+              await tx.notificationEvent.create({
+                data: { roundId: r.id, type: NotificationType.VOTING_STARTED },
+              });
+            }
+          }
         }
 
         // 3. Advance rounds from VOTING to COMPLETED
@@ -98,6 +144,22 @@ export class RoundManagementService {
           },
         });
         roundsAdvancedToCompleted = roundsToCompleted.count;
+
+        // Record VOTING_ENDED for rounds that just completed
+        const justCompleted = await tx.round.findMany({
+          where: { status: RoundStatus.COMPLETED, endDate: { lte: now } },
+          select: { id: true },
+        });
+        for (const r of justCompleted) {
+          const existing = await tx.notificationEvent.findFirst({
+            where: { roundId: r.id, type: NotificationType.VOTING_ENDED },
+          });
+          if (!existing) {
+            await tx.notificationEvent.create({
+              data: { roundId: r.id, type: NotificationType.VOTING_ENDED },
+            });
+          }
+        }
 
         // 4. Finalize all non-finalized votes
         const finalizedVotes = await tx.vote.updateMany({
@@ -189,6 +251,90 @@ export class RoundManagementService {
             );
           }
         }
+      }
+
+      // Send notifications OUTSIDE the transaction
+      // SUBMISSION_ENDING_SOON (unsent events only)
+      const submissionSoonEvents = await prisma.notificationEvent.findMany({
+        where: { type: NotificationType.SUBMISSION_ENDING_SOON, sentAt: null },
+        include: { round: { include: { group: true } } },
+      });
+      for (const ev of submissionSoonEvents) {
+        await sendToRoundMembers(ev.roundId, {
+          title: `${ev.round.group.name}: Submissions closing soon`,
+          body: `"${ev.round.theme}" submissions end in 1 hour. Get yours in!`,
+          data: { roundId: ev.roundId, type: ev.type },
+        });
+        await prisma.notificationEvent.update({
+          where: { id: ev.id },
+          data: { sentAt: new Date() },
+        });
+      }
+
+      // VOTING_STARTED (unsent events only)
+      const votingStartedEvents = await prisma.notificationEvent.findMany({
+        where: { type: NotificationType.VOTING_STARTED, sentAt: null },
+        include: { round: { include: { group: true } } },
+      });
+      for (const ev of votingStartedEvents) {
+        await sendToRoundMembers(ev.roundId, {
+          title: `${ev.round.group.name}: Voting started`,
+          body: `Round "${ev.round.theme}" is open for voting now!`,
+          data: { roundId: ev.roundId, type: ev.type },
+        });
+        await prisma.notificationEvent.update({
+          where: { id: ev.id },
+          data: { sentAt: new Date() },
+        });
+      }
+
+      // VOTING_ENDING_SOON: 1 hour before endDate (create event if missing, then send + mark)
+      const votingEndingSoon = await prisma.round.findMany({
+        where: {
+          status: RoundStatus.VOTING,
+          endDate: { lte: new Date(now.getTime() + 60 * 60 * 1000), gt: now },
+        },
+        select: { id: true, theme: true, group: { select: { name: true } } },
+      });
+      for (const r of votingEndingSoon) {
+        const ev = await prisma.notificationEvent.upsert({
+          where: {
+            roundId_type: {
+              roundId: r.id,
+              type: NotificationType.VOTING_ENDING_SOON,
+            },
+          },
+          create: { roundId: r.id, type: NotificationType.VOTING_ENDING_SOON },
+          update: {},
+        });
+        if (!ev.sentAt) {
+          await sendToRoundMembers(r.id, {
+            title: `Voting closing soon`,
+            body: `"${r.theme}" voting ends in 1 hour—cast your votes!`,
+            data: { roundId: r.id, type: NotificationType.VOTING_ENDING_SOON },
+          });
+          await prisma.notificationEvent.update({
+            where: { id: ev.id },
+            data: { sentAt: new Date() },
+          });
+        }
+      }
+
+      // VOTING_ENDED notifications (unsent events only)
+      const votingEndedToSend = await prisma.notificationEvent.findMany({
+        where: { type: NotificationType.VOTING_ENDED, sentAt: null },
+        include: { round: { include: { group: true } } },
+      });
+      for (const ev of votingEndedToSend) {
+        await sendToRoundMembers(ev.roundId, {
+          title: `${ev.round.group.name}: Voting ended`,
+          body: `Round "${ev.round.theme}" has ended. Check results soon!`,
+          data: { roundId: ev.roundId, type: ev.type },
+        });
+        await prisma.notificationEvent.update({
+          where: { id: ev.id },
+          data: { sentAt: new Date() },
+        });
       }
 
       const totalOperations =

@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "../contexts/AuthContext";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { usePushNotifications } from "../hooks/usePushNotifications";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -18,12 +19,19 @@ const queryClient = new QueryClient({
   },
 });
 
+// Ensure this hook runs within the AuthProvider context
+const NotificationsBootstrap: React.FC = () => {
+  usePushNotifications(true);
+  return null;
+};
+
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <StatusBar style="light" />
+          <NotificationsBootstrap />
           <SafeAreaView
             style={{ flex: 1, backgroundColor: "#191414" }}
             edges={["top", "bottom"]}
