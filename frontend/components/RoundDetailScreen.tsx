@@ -436,12 +436,17 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
         )}
 
         <View style={styles.submissionFooter}>
-          <Text style={styles.submitterName}>
-            Submitted by{" "}
-            {isUserSubmission
-              ? "You"
-              : submission.user?.displayName || "Unknown User"}
-          </Text>
+          {(round.status === "COMPLETED" || isUserSubmission) && (
+            <Text style={styles.submitterName}>
+              {round.status === "COMPLETED"
+                ? `Submitted by ${
+                    isUserSubmission
+                      ? "You"
+                      : submission.user?.displayName || "Unknown User"
+                  }`
+                : "Submitted by You"}
+            </Text>
+          )}
 
           <View style={styles.voteContainer}>
             {/* Show total votes when round is completed, or during voting if the current user has finalized */}
@@ -547,11 +552,7 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
             <Text style={styles.commentLabel}>Your comment</Text>
             <TextInput
               style={styles.commentInput}
-              placeholder={
-                userVotes > 0
-                  ? "Add a comment about your votes..."
-                  : "Add a comment about this song..."
-              }
+              placeholder={"Add a comment about this song..."}
               placeholderTextColor="#666666"
               selectionColor="#FFB000"
               value={userComment}

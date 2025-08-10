@@ -100,6 +100,25 @@ router.post(
         },
       });
 
+      // Prevent duplicate exact song submissions by different users in same round
+      const duplicateSongByOtherUser = await prisma.submission.findFirst({
+        where: {
+          roundId,
+          spotifyTrackId: spotifyTrackId,
+          NOT: { userId: userId },
+        },
+        include: {
+          user: { select: { id: true, displayName: true } },
+        },
+      });
+
+      if (duplicateSongByOtherUser) {
+        return res.status(400).json({
+          error:
+            "This song has already been submitted in this round. Please choose a different track.",
+        });
+      }
+
       let submission;
       if (existingSubmission) {
         // Update existing submission - only update fields that can change

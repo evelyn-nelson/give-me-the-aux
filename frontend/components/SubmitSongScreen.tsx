@@ -16,6 +16,7 @@ import { useSpotifySearch, SpotifyTrack } from "../hooks/useSpotify";
 import {
   useCreateSubmission,
   useUpdateSubmission,
+  useSubmissions,
 } from "../hooks/useSubmissions";
 import { Round, Group, Submission } from "../types/api";
 import { FormWrapper } from "./FormWrapper";
@@ -44,6 +45,7 @@ export const SubmitSongScreen: React.FC<SubmitSongScreenProps> = ({
 
   const createSubmissionMutation = useCreateSubmission();
   const updateSubmissionMutation = useUpdateSubmission();
+  const { data: submissionsData } = useSubmissions(round.id);
 
   const isEditing = !!existingSubmission;
 
@@ -108,42 +110,99 @@ export const SubmitSongScreen: React.FC<SubmitSongScreenProps> = ({
       return;
     }
 
-    setIsSubmitting(true);
+    // Use freshest submissions if available, fallback to round prop
+    const existingSubmissions: Submission[] =
+      submissionsData || round.submissions || [];
 
-    try {
-      const submissionData = {
-        roundId: round.id,
-        spotifyTrackId: selectedTrack.id,
-        trackName: selectedTrack.name,
-        artistName: selectedTrack.artists.join(", "),
-        albumName: selectedTrack.album,
-        imageUrl: selectedTrack.imageUrl,
-        spotifyUrl: selectedTrack.spotifyUrl,
-        previewUrl: selectedTrack.previewUrl,
-        comment: comment.trim() || undefined,
-      };
+    // Normalize artist names for comparison
+    const trackArtistSet = new Set(
+      selectedTrack.artists.map((a) => a.trim().toLowerCase())
+    );
 
-      if (isEditing) {
-        await updateSubmissionMutation.mutateAsync(submissionData);
-      } else {
-        await createSubmissionMutation.mutateAsync(submissionData);
-      }
-
-      const successMessage = isEditing
-        ? "Your song has been updated successfully!"
-        : "Your song has been submitted successfully!";
-
-      onSuccess?.();
-      onBack();
-    } catch (error) {
-      console.error("Submission error:", error);
-      const errorMessage = isEditing
-        ? "Failed to update song. Please try again."
-        : "Failed to submit song. Please try again.";
-      Alert.alert("Error", errorMessage);
-    } finally {
-      setIsSubmitting(false);
+    // Check for exact song already submitted by another user
+    const duplicateSong = existingSubmissions.find(
+      (s) => s.spotifyTrackId === selectedTrack.id && s.user?.id !== user.id
+    );
+    if (duplicateSong) {
+      Alert.alert(
+        "Song already submitted",
+        "This exact song has already been submitted for this round. Please choose a different track."
+      );
+      return;
     }
+
+    // Check for same-artist submission from another user
+    const sameArtistSubmission = existingSubmissions.find((s) => {
+      if (s.user?.id === user.id) return false; // ignore current user's own submission
+      const submissionArtists = s.artistName
+        .split(",")
+        .map((a) => a.trim().toLowerCase())
+        .filter(Boolean);
+      return submissionArtists.some((artist) => trackArtistSet.has(artist));
+    });
+
+    const performSubmit = async () => {
+      setIsSubmitting(true);
+      try {
+        const submissionData = {
+          roundId: round.id,
+          spotifyTrackId: selectedTrack.id,
+          trackName: selectedTrack.name,
+          artistName: selectedTrack.artists.join(", "),
+          albumName: selectedTrack.album,
+          imageUrl: selectedTrack.imageUrl,
+          spotifyUrl: selectedTrack.spotifyUrl,
+          previewUrl: selectedTrack.previewUrl,
+          comment: comment.trim() || undefined,
+        };
+
+        if (isEditing) {
+          await updateSubmissionMutation.mutateAsync(submissionData);
+        } else {
+          await createSubmissionMutation.mutateAsync(submissionData);
+        }
+
+        onSuccess?.();
+        onBack();
+      } catch (error: any) {
+        console.error("Submission error:", error);
+        const message =
+          typeof error?.message === "string" ? error.message : undefined;
+        if (
+          message &&
+          message.toLowerCase().includes("already been submitted")
+        ) {
+          Alert.alert("Duplicate song", message);
+        } else {
+          const errorMessage = isEditing
+            ? "Failed to update song. Please try again."
+            : "Failed to submit song. Please try again.";
+          Alert.alert("Error", errorMessage);
+        }
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    if (sameArtistSubmission) {
+      Alert.alert(
+        "Same artist already submitted",
+        "A song by this artist has already been submitted in this round. You can submit anyway, but consider picking a different artist for variety.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Submit anyway",
+            style: "default",
+            onPress: () => {
+              performSubmit();
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    await performSubmit();
   };
 
   const formatDuration = (durationMs: number) => {
