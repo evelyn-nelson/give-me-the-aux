@@ -43,6 +43,7 @@ This app uses **Spotify OAuth 2.0 with PKCE** for secure user authentication. Th
    - Failed auth returns 401 status with error message
 
 5. **Logout Process**:
+
    - App calls logout endpoint to revoke all refresh tokens
    - App clears stored tokens from SecureStore
    - User must re-authenticate to access protected features
@@ -85,32 +86,49 @@ JWT_SECRET=your_jwt_signing_secret
 2. Add redirect URI: `givemetheaux://auth`
 3. Request scopes: `user-read-email`, `user-read-private`, `playlist-modify-public`, `playlist-modify-private`, `user-library-read`
 
-list of libraries
+## Frontend Navigation (Expo Router)
+
+- Navigation is handled by Expo Router using the `app/` directory.
+- Add new screens by creating files in `frontend/app/`.
+- Navigate programmatically using `useRouter()` from `expo-router` (e.g., `router.push('/path')`).
+- iOS swipe-back and Android back handling are built-in.
+
+Current top-level routes:
+
+- `/` → group list
+- `/create-group`
+- `/settings`
+- `/group/[groupId]`
+- `/group/[groupId]/create-round`
+- `/round/[roundId]`
+- `/submit-song` (expects `roundId`, `groupId` params)
+
+### Libraries
 
 - frontend
-  @react-navigation/native
-  @react-navigation/stack
-  @react-navigation/bottom-tabs
-  react-native-screens
-  react-native-safe-area-context
-  @tanstack/react-query
-  react-hook-form
-  expo-auth-session
-  expo-crypto
-  expo-notifications
-  expo-linking
-  expo-constants
+
+  - expo-router
+  - react-native-gesture-handler
+  - react-native-screens
+  - react-native-safe-area-context
+  - @tanstack/react-query
+  - react-hook-form
+  - expo-auth-session
+  - expo-crypto
+  - expo-notifications
+  - expo-linking
+  - expo-constants
 
 - backend
-  express
-  cors
-  helmet
-  jsonwebtoken
-  bcrypt
-  prisma
-  @prisma/client
-  dotenv
-  axios
+  - express
+  - cors
+  - helmet
+  - jsonwebtoken
+  - bcrypt
+  - prisma
+  - @prisma/client
+  - dotenv
+  - axios
 
 commands
 

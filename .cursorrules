@@ -6,7 +6,7 @@ This is a React Native (Expo) + Node.js music voting app where users create grou
 
 ## Tech Stack
 
-- **Frontend**: Expo (React Native), TypeScript, React Navigation, TanStack Query, React Hook Form
+- **Frontend**: Expo (React Native), TypeScript, Expo Router, TanStack Query, React Hook Form
 - **Backend**: Node.js, Express, TypeScript, Prisma ORM, PostgreSQL
 - **Database**: PostgreSQL (Docker container)
 - **Authentication**: Spotify OAuth
@@ -213,10 +213,14 @@ inputStyle: {
 
 ### Navigation
 
-- Use Expo Router
-- Type-safe navigation params
-- Handle deep linking for group invites
-- Proper loading states
+- Use Expo Router (file-system routing) with the `frontend/app/` directory
+- Create screens by adding route files; dynamic segments use square brackets, e.g., `app/group/[groupId].tsx`
+- Programmatic navigation via `useRouter()` (`push`, `replace`, `back`)
+- Read route params via `useLocalSearchParams()` and validate types
+- Do not implement custom in-component navigators; rely on Router for back and gestures
+- Deep linking is handled by Expo Router; prefer `router.push({ pathname, params })` for typed params
+- Ensure `import 'react-native-gesture-handler'` exists in `frontend/index.ts`
+- Safe areas: root `app/_layout.tsx` wraps the stack in `SafeAreaView`; avoid extra top padding in screens
 
 ### UI Components
 
