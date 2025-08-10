@@ -140,6 +140,8 @@ model Playlist {
   group     Group?         @relation(fields: [groupId], references: [id])
   round     Round?         @relation(fields: [roundId], references: [id])
   user      User           @relation(fields: [userId], references: [id])
+  spotifyPlaylistId String? @unique @map("spotify_playlist_id")
+  spotifyUrl       String?  @map("spotify_url")
 
   @@map("playlists")
 }

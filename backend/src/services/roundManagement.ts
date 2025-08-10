@@ -1,5 +1,7 @@
-import { PrismaClient, RoundStatus } from "@prisma/client";
+import { PrismaClient, RoundStatus, PlaylistType } from "@prisma/client";
 import * as cron from "node-cron";
+import { AuthService } from "./auth";
+import { SpotifyService } from "./spotify";
 
 const prisma = new PrismaClient();
 
@@ -44,6 +46,9 @@ export class RoundManagementService {
       let roundsAdvancedToCompleted = 0;
       let votesFinalized = 0;
 
+      // Track the rounds that transitioned to VOTING so we can create playlists after the transaction
+      let votingRoundIds: string[] = [];
+
       // Use a transaction to ensure consistency
       await prisma.$transaction(async (tx) => {
         // 1. Advance rounds from INACTIVE to SUBMISSION
@@ -61,18 +66,24 @@ export class RoundManagementService {
         roundsAdvancedToSubmission = roundsToSubmission.count;
 
         // 2. Advance rounds from SUBMISSION to VOTING
-        const roundsToVoting = await tx.round.updateMany({
+        const roundsNeedingVoting = await tx.round.findMany({
           where: {
             status: RoundStatus.SUBMISSION,
-            votingStartDate: {
-              lte: now,
-            },
+            votingStartDate: { lte: now },
           },
-          data: {
-            status: RoundStatus.VOTING,
+          include: {
+            group: true,
+            submissions: true,
           },
         });
-        roundsAdvancedToVoting = roundsToVoting.count;
+        if (roundsNeedingVoting.length > 0) {
+          const updateResult = await tx.round.updateMany({
+            where: { id: { in: roundsNeedingVoting.map((r) => r.id) } },
+            data: { status: RoundStatus.VOTING },
+          });
+          roundsAdvancedToVoting = updateResult.count;
+          votingRoundIds = roundsNeedingVoting.map((r) => r.id);
+        }
 
         // 3. Advance rounds from VOTING to COMPLETED
         const roundsToCompleted = await tx.round.updateMany({
@@ -99,6 +110,86 @@ export class RoundManagementService {
         });
         votesFinalized = finalizedVotes.count;
       });
+
+      // Create Spotify playlists for rounds that just transitioned to VOTING
+      if (votingRoundIds.length > 0) {
+        const rounds = await prisma.round.findMany({
+          where: { id: { in: votingRoundIds } },
+          include: {
+            group: { include: { admin: true } },
+            submissions: true,
+          },
+        });
+
+        for (const round of rounds) {
+          try {
+            const ownerUserId = round.group.adminId; // default owner is the group admin
+            const owner = await AuthService.getUserWithValidToken(ownerUserId);
+            if (!owner || !owner.spotifyAccessToken) {
+              console.warn(
+                `[Round Management] Skipping playlist creation for round ${round.id} - missing admin Spotify token`
+              );
+              continue;
+            }
+
+            const spotify = new SpotifyService(owner.spotifyAccessToken);
+            const playlistName = `${round.group.name} · ${round.theme}`;
+            const description = `Give Me The Aux – Round playlist for "${round.theme}"`;
+
+            const created = await spotify.createPlaylist(
+              owner.spotifyId,
+              playlistName,
+              description,
+              false
+            );
+
+            // Persist a playlist record and attach to round/group
+            const trackUris = round.submissions.map(
+              (s) => `spotify:track:${s.spotifyTrackId}`
+            );
+            if (trackUris.length > 0) {
+              await spotify.addTracksToPlaylist(created.id, trackUris);
+            }
+            const dbPlaylist = await prisma.playlist.create({
+              data: {
+                name: playlistName,
+                userId: owner.id,
+                groupId: round.groupId,
+                roundId: round.id,
+                type: PlaylistType.ROUND_ALL,
+                isPublic: false,
+                spotifyPlaylistId: created.id,
+                spotifyUrl: created.external_urls?.spotify || null,
+              },
+            });
+
+            if (round.submissions.length > 0) {
+              await prisma.playlistItem.createMany({
+                data: round.submissions.map((s, index) => ({
+                  playlistId: dbPlaylist.id,
+                  spotifyTrackId: s.spotifyTrackId,
+                  trackName: s.trackName,
+                  artistName: s.artistName,
+                  albumName: s.albumName,
+                  imageUrl: s.imageUrl,
+                  order: index + 1,
+                })),
+              });
+            }
+
+            if (this.config.enableLogging) {
+              console.log(
+                `[Round Management] Created Spotify playlist ${created.id} for round ${round.id}`
+              );
+            }
+          } catch (err) {
+            console.error(
+              `[Round Management] Failed to create playlist for round ${round.id}:`,
+              err
+            );
+          }
+        }
+      }
 
       const totalOperations =
         roundsAdvancedToSubmission +

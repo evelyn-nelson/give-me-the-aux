@@ -10,6 +10,7 @@ import {
   Alert,
   Image,
   TextInput,
+  Linking,
 } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -750,6 +751,25 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
           </View>
         </View>
 
+        {round.playlists &&
+          round.playlists.length > 0 &&
+          round.playlists[0].spotifyUrl && (
+            <View style={styles.cardSection}>
+              <Text style={styles.sectionTitle}>Playlist</Text>
+              <View style={styles.cardBody}>
+                <TouchableOpacity
+                  accessibilityLabel="Open Spotify playlist"
+                  onPress={() =>
+                    Linking.openURL(round.playlists![0].spotifyUrl!)
+                  }
+                  style={styles.playlistLink}
+                >
+                  <Text style={styles.playlistLinkText}>Open in Spotify</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
         {canVote && (
           <View style={styles.cardSection}>
             <View style={styles.votingHeaderRow}>
@@ -1449,5 +1469,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#E0E0E0",
     lineHeight: 18,
+  },
+  playlistLink: {
+    backgroundColor: "#FFB000",
+    paddingVertical: 12,
+    borderRadius: 25,
+    alignItems: "center",
+  },
+  playlistLinkText: {
+    color: "#191414",
+    fontWeight: "700",
+    fontSize: 16,
   },
 });

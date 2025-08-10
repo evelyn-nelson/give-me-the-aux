@@ -53,6 +53,12 @@ export interface Round {
     maxVotesPerSong: number;
   };
   submissions: Submission[];
+  playlists?: Array<{
+    id: string;
+    name: string;
+    spotifyUrl?: string | null;
+    isPublic: boolean;
+  }>;
   _count: {
     submissions: number;
   };

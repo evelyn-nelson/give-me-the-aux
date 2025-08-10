@@ -271,6 +271,14 @@ router.get(
               },
             },
           },
+          playlists: {
+            select: {
+              id: true,
+              name: true,
+              spotifyUrl: true,
+              isPublic: true,
+            },
+          },
           _count: {
             select: {
               submissions: true,
@@ -346,6 +354,14 @@ router.get(
                   },
                 },
               },
+            },
+          },
+          playlists: {
+            select: {
+              id: true,
+              name: true,
+              spotifyUrl: true,
+              isPublic: true,
             },
           },
           _count: {
