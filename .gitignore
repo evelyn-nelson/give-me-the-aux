@@ -3,3 +3,4 @@ node_modules/
 .expo/
 dist/
 build/
+.DS_Store
