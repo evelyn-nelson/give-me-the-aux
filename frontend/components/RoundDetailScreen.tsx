@@ -64,6 +64,7 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
   // Refs for debouncing
   const saveTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
   const pendingVotes = useRef<Record<string, VoteState>>({});
+  const touchedSubmissions = useRef<Set<string>>(new Set());
 
   // Fetch fresh round data using the hook with initial data to avoid loading screen
   const { data: round = initialRound, isLoading: isLoadingRound } = useRound(
@@ -99,16 +100,31 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
   useEffect(() => {
     if (!round.submissions || !user) return;
 
-    const initialState: Record<string, VoteState> = {};
+    // Initialize from server only for submissions that have not been touched
+    // or are not already present in local state
+    let hasChanges = false;
+    const nextState: Record<string, VoteState> = { ...votingState };
+
     round.submissions.forEach((submission) => {
-      const userVote = submission.votes?.find((v) => v.user?.id === user.id);
-      initialState[submission.id] = {
-        count: userVote?.count || 0,
-        comment: userVote?.comment || "",
-      };
+      const isTouched = touchedSubmissions.current.has(submission.id);
+      const alreadyInState = Object.prototype.hasOwnProperty.call(
+        votingState,
+        submission.id
+      );
+      if (!isTouched && !alreadyInState) {
+        const userVote = submission.votes?.find((v) => v.user?.id === user.id);
+        nextState[submission.id] = {
+          count: userVote?.count || 0,
+          comment: userVote?.comment || "",
+        };
+        hasChanges = true;
+      }
     });
-    setVotingState(initialState);
-  }, [round.submissions, user]);
+
+    if (hasChanges) {
+      setVotingState(nextState);
+    }
+  }, [round.submissions, user, votingState]);
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -117,6 +133,27 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
       Object.values(saveTimeouts.current).forEach(clearTimeout);
     };
   }, []);
+
+  // Rehydrate local state from server when votes become finalized
+  useEffect(() => {
+    if (!votesAreFinalized || !round.submissions || !user) return;
+
+    // Clear any pending saves and local optimistic tracking
+    Object.values(saveTimeouts.current).forEach(clearTimeout);
+    saveTimeouts.current = {};
+    pendingVotes.current = {} as Record<string, VoteState>;
+    touchedSubmissions.current.clear();
+
+    const rehydratedState: Record<string, VoteState> = {};
+    round.submissions.forEach((submission) => {
+      const userVote = submission.votes?.find((v) => v.user?.id === user.id);
+      rehydratedState[submission.id] = {
+        count: userVote?.count || 0,
+        comment: userVote?.comment || "",
+      };
+    });
+    setVotingState(rehydratedState);
+  }, [votesAreFinalized, round.submissions, user]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -193,9 +230,6 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
         const currentPendingVote = pendingVotes.current[submissionId];
         if (!currentPendingVote) return;
 
-        // Set saving status
-        setAutoSaveStatus((prev) => ({ ...prev, [submissionId]: "saving" }));
-
         try {
           const submission = round.submissions?.find(
             (s) => s.id === submissionId
@@ -235,18 +269,6 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
               comment: currentPendingVote.comment.trim() || undefined,
             });
           }
-
-          // Set saved status
-          setAutoSaveStatus((prev) => ({ ...prev, [submissionId]: "saved" }));
-
-          // Clear status after 2 seconds
-          setTimeout(() => {
-            setAutoSaveStatus((prev) => {
-              const newState = { ...prev };
-              delete newState[submissionId];
-              return newState;
-            });
-          }, 2000);
 
           // Clear pending vote
           delete pendingVotes.current[submissionId];
@@ -311,6 +333,7 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
       // Update local state immediately for responsive UI
       const newState = { ...currentState, count: Math.max(0, newCount) };
       setVotingState((prev) => ({ ...prev, [submissionId]: newState }));
+      touchedSubmissions.current.add(submissionId);
 
       // Trigger debounced save
       debouncedSave(submissionId, newState);
@@ -337,6 +360,7 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
 
       // Update local state immediately
       setVotingState((prev) => ({ ...prev, [submissionId]: newState }));
+      touchedSubmissions.current.add(submissionId);
 
       // Save if there's a vote count OR a comment (to allow comments without votes)
       if (newState.count > 0 || newState.comment.trim()) {
@@ -374,10 +398,6 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
   };
 
   const renderSubmissionCard = ({ item: submission }: { item: Submission }) => {
-    // Only show the vote count if the user has already voted for this round
-    const userHasVotedInRound = (round.submissions || []).some((s) =>
-      (s.votes || []).some((v) => v.user?.id === user?.id && v.count > 0)
-    );
     const totalVotes = getTotalVotes(submission);
     const isUserSubmission = submission.user?.id === user?.id;
 
@@ -424,8 +444,8 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
           </Text>
 
           <View style={styles.voteContainer}>
-            {/* Show vote total prominently for completed rounds, or for other phases if user has voted */}
-            {(round.status === "COMPLETED" || userHasVotedInRound) && (
+            {/* Show total votes when round is completed, or during voting if the current user has finalized */}
+            {(round.status === "COMPLETED" || votesAreFinalized) && (
               <View
                 style={[
                   styles.voteDisplayContainer,
@@ -462,10 +482,7 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
                     userVotes > 0 && styles.voteButtonActive,
                   ]}
                   onPress={() => handleVoteChange(submission.id, userVotes - 1)}
-                  disabled={
-                    userVotes === 0 ||
-                    autoSaveStatus[submission.id] === "saving"
-                  }
+                  disabled={userVotes === 0}
                 >
                   <Text
                     style={[
@@ -479,17 +496,9 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
 
                 <View style={styles.voteCountContainer}>
                   <Text style={styles.userVoteCount}>{userVotes}</Text>
-                  {autoSaveStatus[submission.id] && (
+                  {autoSaveStatus[submission.id] === "error" && (
                     <View style={styles.autoSaveIndicator}>
-                      {autoSaveStatus[submission.id] === "saving" && (
-                        <ActivityIndicator size="small" color="#FFB000" />
-                      )}
-                      {autoSaveStatus[submission.id] === "saved" && (
-                        <Text style={styles.autoSaveText}>✓</Text>
-                      )}
-                      {autoSaveStatus[submission.id] === "error" && (
-                        <Text style={styles.autoSaveError}>!</Text>
-                      )}
+                      <Text style={styles.autoSaveError}>!</Text>
                     </View>
                   )}
                 </View>
@@ -504,8 +513,7 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
                   onPress={() => handleVoteChange(submission.id, userVotes + 1)}
                   disabled={
                     userVotes >= (group?.maxVotesPerSong || 0) ||
-                    getRemainingVotes() === 0 ||
-                    autoSaveStatus[submission.id] === "saving"
+                    getRemainingVotes() === 0
                   }
                 >
                   <Text
@@ -556,37 +564,27 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
           </View>
         )}
 
-        {/* Show existing votes in voting/completed phases */}
-        {(round.status === "VOTING" || round.status === "COMPLETED") &&
+        {/* Show existing votes and comments only after the round is completed */}
+        {round.status === "COMPLETED" &&
           submission.votes &&
           submission.votes.length > 0 &&
           (() => {
-            // For completed rounds, show all votes (with points or comments), ordered by points descending
-            // For voting rounds, only show votes with comments
-            const filteredVotes =
-              round.status === "COMPLETED"
-                ? submission.votes.filter(
-                    (vote) => vote.count > 0 || vote.comment
-                  )
-                : submission.votes.filter((vote) => vote.comment);
+            const filteredVotes = submission.votes.filter(
+              (vote) => vote.count > 0 || vote.comment
+            );
 
-            const sortedVotes =
-              round.status === "COMPLETED"
-                ? filteredVotes.sort((a, b) => {
-                    // Sort by count descending (3, 2, 1, 0), then by user name for ties
-                    if (b.count !== a.count) {
-                      return b.count - a.count;
-                    }
-                    return a.user.displayName.localeCompare(b.user.displayName);
-                  })
-                : filteredVotes;
+            const sortedVotes = filteredVotes.sort((a, b) => {
+              // Sort by count descending (3, 2, 1, 0), then by user name for ties
+              if (b.count !== a.count) {
+                return b.count - a.count;
+              }
+              return a.user.displayName.localeCompare(b.user.displayName);
+            });
 
             return (
               sortedVotes.length > 0 && (
                 <View style={styles.voteCommentsContainer}>
-                  <Text style={styles.voteCommentsTitle}>
-                    {round.status === "COMPLETED" ? "Votes:" : "Comments:"}
-                  </Text>
+                  <Text style={styles.voteCommentsTitle}>Votes:</Text>
                   {sortedVotes.map((vote) => (
                     <View key={vote.id} style={styles.voteCommentItem}>
                       <Text style={styles.voteCommentAuthor}>
