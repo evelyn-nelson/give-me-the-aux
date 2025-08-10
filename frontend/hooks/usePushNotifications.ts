@@ -4,6 +4,7 @@ import * as Device from "expo-device";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 import { useApi } from "./useApi";
+import { router } from "expo-router";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -54,6 +55,17 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
   }
 }
 
+function navigateFromNotificationData(data: any) {
+  const roundId = data?.roundId as string | undefined;
+  const groupId = (data?.groupId as string | undefined) ?? undefined;
+  if (roundId) {
+    router.push({
+      pathname: "/round/[roundId]",
+      params: groupId ? { roundId, groupId } : { roundId },
+    });
+  }
+}
+
 export function usePushNotifications(enabled: boolean) {
   const api = useApi();
 
@@ -61,6 +73,7 @@ export function usePushNotifications(enabled: boolean) {
     if (!enabled) return;
 
     let isMounted = true;
+    let responseListener: Notifications.Subscription | undefined;
 
     (async () => {
       const token = await registerForPushNotificationsAsync();
@@ -71,10 +84,29 @@ export function usePushNotifications(enabled: boolean) {
           await api.registerPushToken({ token, platform: Platform.OS });
         } catch {}
       }
+
+      // Handle cold-start notification navigation
+      try {
+        const last = await Notifications.getLastNotificationResponseAsync();
+        if (last?.notification?.request?.content?.data) {
+          navigateFromNotificationData(last.notification.request.content.data);
+        }
+      } catch {}
+
+      // Subscribe to notification response (tap)
+      responseListener = Notifications.addNotificationResponseReceivedListener(
+        (response) => {
+          const data = response.notification.request.content.data;
+          navigateFromNotificationData(data);
+        }
+      );
     })();
 
     return () => {
       isMounted = false;
+      if (responseListener) {
+        responseListener.remove();
+      }
     };
   }, [enabled]);
 }

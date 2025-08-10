@@ -12,7 +12,8 @@ export default function RoundDetailRoute() {
   }>();
   const router = useRouter();
   const { data: round, isLoading: isLoadingRound } = useRound(roundId ?? "");
-  const { data: group, isLoading: isLoadingGroup } = useGroup(groupId ?? "");
+  const resolvedGroupId = groupId || round?.group?.id || "";
+  const { data: group, isLoading: isLoadingGroup } = useGroup(resolvedGroupId);
 
   if (!round || isLoadingRound || !group || isLoadingGroup) {
     return (
@@ -45,8 +46,8 @@ export default function RoundDetailRoute() {
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
-    backgroundColor: "#191414",
-    alignItems: "center",
     justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#191414",
   },
 });

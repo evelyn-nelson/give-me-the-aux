@@ -263,7 +263,11 @@ export class RoundManagementService {
         await sendToRoundMembers(ev.roundId, {
           title: `${ev.round.group.name}: Submissions closing soon`,
           body: `"${ev.round.theme}" submissions end in 1 hour. Get yours in!`,
-          data: { roundId: ev.roundId, type: ev.type },
+          data: {
+            roundId: ev.roundId,
+            groupId: ev.round.group.id,
+            type: ev.type,
+          },
         });
         await prisma.notificationEvent.update({
           where: { id: ev.id },
@@ -280,7 +284,11 @@ export class RoundManagementService {
         await sendToRoundMembers(ev.roundId, {
           title: `${ev.round.group.name}: Voting started`,
           body: `Round "${ev.round.theme}" is open for voting now!`,
-          data: { roundId: ev.roundId, type: ev.type },
+          data: {
+            roundId: ev.roundId,
+            groupId: ev.round.group.id,
+            type: ev.type,
+          },
         });
         await prisma.notificationEvent.update({
           where: { id: ev.id },
@@ -294,7 +302,11 @@ export class RoundManagementService {
           status: RoundStatus.VOTING,
           endDate: { lte: new Date(now.getTime() + 60 * 60 * 1000), gt: now },
         },
-        select: { id: true, theme: true, group: { select: { name: true } } },
+        select: {
+          id: true,
+          theme: true,
+          group: { select: { id: true, name: true } },
+        },
       });
       for (const r of votingEndingSoon) {
         const ev = await prisma.notificationEvent.upsert({
@@ -311,7 +323,11 @@ export class RoundManagementService {
           await sendToRoundMembers(r.id, {
             title: `Voting closing soon`,
             body: `"${r.theme}" voting ends in 1 hour—cast your votes!`,
-            data: { roundId: r.id, type: NotificationType.VOTING_ENDING_SOON },
+            data: {
+              roundId: r.id,
+              groupId: r.group.id,
+              type: NotificationType.VOTING_ENDING_SOON,
+            },
           });
           await prisma.notificationEvent.update({
             where: { id: ev.id },
@@ -329,7 +345,11 @@ export class RoundManagementService {
         await sendToRoundMembers(ev.roundId, {
           title: `${ev.round.group.name}: Voting ended`,
           body: `Round "${ev.round.theme}" has ended. Check results soon!`,
-          data: { roundId: ev.roundId, type: ev.type },
+          data: {
+            roundId: ev.roundId,
+            groupId: ev.round.group.id,
+            type: ev.type,
+          },
         });
         await prisma.notificationEvent.update({
           where: { id: ev.id },
