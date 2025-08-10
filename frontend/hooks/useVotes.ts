@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApi } from "./useApi";
 import { Vote, CreateVoteData, FinalizeVotesResponse } from "../types/api";
 import { submissionKeys } from "./useSubmissions";
-import { roundKeys } from "./useRounds";
+import { roundKeys } from "./queryKeys";
 
 // Vote query keys for cache management
 export const voteKeys = {

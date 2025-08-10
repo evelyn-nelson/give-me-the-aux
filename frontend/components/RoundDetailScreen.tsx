@@ -21,6 +21,8 @@ import {
 } from "../hooks/useVotes";
 import { useRound } from "../hooks/useRounds";
 import { useGroupRoundMembers } from "../hooks/useGroups";
+import { ChatFloatingButton } from "./ChatFloatingButton";
+import { ChatModal } from "./ChatModal";
 import {
   Round,
   User,
@@ -56,6 +58,7 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
   const [autoSaveStatus, setAutoSaveStatus] = useState<
     Record<string, "saving" | "saved" | "error">
   >({});
+  const [chatModalVisible, setChatModalVisible] = useState(false);
 
   // Refs for debouncing
   const saveTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
@@ -876,6 +879,18 @@ export const RoundDetailScreen: React.FC<RoundDetailScreenProps> = ({
           <ActivityIndicator size="large" color="#FFB000" />
         </View>
       )}
+
+      <ChatFloatingButton
+        onPress={() => setChatModalVisible(true)}
+        unreadCount={0} // TODO: Implement unread message count
+      />
+
+      <ChatModal
+        visible={chatModalVisible}
+        onClose={() => setChatModalVisible(false)}
+        groupId={group.id}
+        groupName={group.name}
+      />
     </View>
   );
 };

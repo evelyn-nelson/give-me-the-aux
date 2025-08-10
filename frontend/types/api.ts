@@ -6,6 +6,14 @@ export interface User {
   avatarUrl?: string;
 }
 
+export interface Message {
+  id: string;
+  groupId: string;
+  content: string;
+  createdAt: string;
+  user: User;
+}
+
 export interface Vote {
   id: string;
   count: number;

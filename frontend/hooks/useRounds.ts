@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApi } from "./useApi";
-import { groupKeys } from "./useGroups";
+import { groupKeys, roundKeys } from "./queryKeys";
 import {
   Round,
   Group,
@@ -8,15 +8,6 @@ import {
   UpdateRoundData,
   ReorderRoundsData,
 } from "../types/api";
-
-// Query Keys
-export const roundKeys = {
-  all: ["rounds"] as const,
-  lists: () => [...roundKeys.all, "list"] as const,
-  list: (groupId: string) => [...roundKeys.lists(), groupId] as const,
-  details: () => [...roundKeys.all, "detail"] as const,
-  detail: (id: string) => [...roundKeys.details(), id] as const,
-};
 
 // Hooks
 export const useRounds = (groupId: string) => {

@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+} from "react";
 import * as SecureStore from "expo-secure-store";
 import { makeRedirectUri, useAuthRequest } from "expo-auth-session";
 
@@ -38,6 +44,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // prevent concurrent refresh storms
+  const isRefreshingRef = useRef<Promise<boolean> | null>(null);
 
   // Create redirect URI with custom scheme
   const redirectUri = makeRedirectUri({
@@ -187,46 +196,62 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const refreshTokens = async (): Promise<boolean> => {
-    try {
-      const refreshToken = await SecureStore.getItemAsync("refreshToken");
-
-      if (!refreshToken) {
-        console.log("No refresh token available");
-        return false;
-      }
-
-      console.log("Attempting to refresh tokens...");
-
-      const response = await fetch(
-        `${process.env.EXPO_PUBLIC_API_URL}/api/auth/refresh`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ refreshToken }),
-        }
-      );
-
-      console.log("Refresh response status:", response.status);
-
-      if (response.ok) {
-        const result = await response.json();
-        await SecureStore.setItemAsync("accessToken", result.data.accessToken);
-        await SecureStore.setItemAsync(
-          "refreshToken",
-          result.data.refreshToken
-        );
-        console.log("Tokens refreshed successfully");
-        return true;
-      }
-
-      console.log("Token refresh failed:", response.status);
-      return false;
-    } catch (error) {
-      console.error("Token refresh error:", error);
-      return false;
+    if (isRefreshingRef.current) {
+      return isRefreshingRef.current;
     }
+
+    const doRefresh = (async () => {
+      try {
+        const refreshToken = await SecureStore.getItemAsync("refreshToken");
+
+        if (!refreshToken) {
+          console.log("No refresh token available");
+          return false;
+        }
+
+        console.log("Attempting to refresh tokens...");
+
+        const response = await fetch(
+          `${process.env.EXPO_PUBLIC_API_URL}/api/auth/refresh`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ refreshToken }),
+          }
+        );
+
+        console.log("Refresh response status:", response.status);
+
+        if (response.ok) {
+          const result = await response.json();
+          await SecureStore.setItemAsync(
+            "accessToken",
+            result.data.accessToken
+          );
+          await SecureStore.setItemAsync(
+            "refreshToken",
+            result.data.refreshToken
+          );
+          console.log("Tokens refreshed successfully");
+          return true;
+        }
+
+        console.log("Token refresh failed:", response.status);
+        return false;
+      } catch (error) {
+        console.error("Token refresh error:", error);
+        return false;
+      } finally {
+        // small delay to prevent hammering on repeated 401s
+        await new Promise((r) => setTimeout(r, 250));
+        isRefreshingRef.current = null;
+      }
+    })();
+
+    isRefreshingRef.current = doRefresh;
+    return doRefresh;
   };
 
   const login = async () => {

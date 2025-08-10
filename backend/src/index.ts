@@ -8,6 +8,7 @@ import groupRoutes from "./routes/groups";
 import roundRoutes from "./routes/rounds";
 import submissionRoutes from "./routes/submissions";
 import voteRoutes from "./routes/votes";
+import messageRoutes from "./routes/messages";
 import { TokenCleanupService } from "./services/tokenCleanup";
 import { RoundManagementService } from "./services/roundManagement";
 
@@ -32,6 +33,7 @@ app.use("/api/groups", groupRoutes);
 app.use("/api/rounds", roundRoutes);
 app.use("/api/submissions", submissionRoutes);
 app.use("/api/submissions", voteRoutes); // Mount votes under /api/submissions to maintain URL structure
+app.use("/api/messages", messageRoutes);
 
 // Health check
 app.get("/health", (req, res) => {

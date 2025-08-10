@@ -16,7 +16,10 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yourcompany.givemetheaux"
+      "bundleIdentifier": "com.yourcompany.givemetheaux",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -32,6 +35,11 @@
     "plugins": [
       "expo-dev-client",
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "4206862e-adc4-4ae3-b2a7-67a8bb9f7fcc"
+      }
+    }
   }
 }

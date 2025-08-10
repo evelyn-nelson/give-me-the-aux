@@ -101,8 +101,8 @@ export const GroupListScreen: React.FC<GroupListScreenProps> = ({
       </View>
     );
   }
-
   if (error) {
+    console.error(error);
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.errorText}>Failed to load groups</Text>

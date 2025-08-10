@@ -11,6 +11,8 @@ import {
 } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
 import { useDeleteGroup, useGroup } from "../hooks/useGroups";
+import { ChatFloatingButton } from "./ChatFloatingButton";
+import { ChatModal } from "./ChatModal";
 import { Group, Round, User } from "../types/api";
 
 interface GroupDetailScreenProps {
@@ -30,6 +32,7 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
 }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"rounds" | "members">("rounds");
+  const [chatModalVisible, setChatModalVisible] = useState(false);
 
   // Fetch fresh group data using the hook with initial data to avoid loading screen
   const { data: group = initialGroup, isLoading: isLoadingGroup } = useGroup(
@@ -356,6 +359,18 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
           <ActivityIndicator size="large" color="#FFB000" />
         </View>
       )}
+
+      <ChatFloatingButton
+        onPress={() => setChatModalVisible(true)}
+        unreadCount={0} // TODO: Implement unread message count
+      />
+
+      <ChatModal
+        visible={chatModalVisible}
+        onClose={() => setChatModalVisible(false)}
+        groupId={currentGroup.id}
+        groupName={currentGroup.name}
+      />
     </View>
   );
 };

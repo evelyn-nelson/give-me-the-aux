@@ -7,18 +7,7 @@ import {
   Round,
   GroupMemberWithSubmissionStatus,
 } from "../types/api";
-import { roundKeys } from "./useRounds";
-
-// Query Keys
-export const groupKeys = {
-  all: ["groups"] as const,
-  lists: () => [...groupKeys.all, "list"] as const,
-  list: () => [...groupKeys.lists()] as const,
-  details: () => [...groupKeys.all, "detail"] as const,
-  detail: (id: string) => [...groupKeys.details(), id] as const,
-  roundMembers: (groupId: string, roundId: string) =>
-    [...groupKeys.all, "round-members", groupId, roundId] as const,
-};
+import { groupKeys, roundKeys } from "./queryKeys";
 
 // Utility function to prefetch related data
 const prefetchRelatedData = (queryClient: any, group: Group) => {

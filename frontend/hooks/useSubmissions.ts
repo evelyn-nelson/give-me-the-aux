@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApi } from "./useApi";
 import { Submission, CreateSubmissionData } from "../types/api";
-import { roundKeys } from "./useRounds";
+import { roundKeys } from "./queryKeys";
 
 // Query Keys
 export const submissionKeys = {

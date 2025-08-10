@@ -2,6 +2,8 @@ import rateLimit from "express-rate-limit";
 import { Request, Response } from "express";
 import { AuthRequest } from "./auth";
 
+const skipInDev = process.env.NODE_ENV !== "production";
+
 // Rate limiter for Spotify OAuth login
 export const spotifyLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -13,6 +15,7 @@ export const spotifyLoginLimiter = rateLimit({
   },
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  skip: () => skipInDev,
   handler: (req: Request, res: Response) => {
     res.status(429).json({
       error:
@@ -33,6 +36,7 @@ export const tokenRefreshLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => skipInDev,
   handler: (req: Request, res: Response) => {
     res.status(429).json({
       error:
@@ -52,6 +56,7 @@ export const authEndpointsLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => skipInDev,
   handler: (req: Request, res: Response) => {
     res.status(429).json({
       error:
@@ -76,6 +81,7 @@ export const userSpecificLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => skipInDev,
   handler: (req: AuthRequest, res: Response) => {
     res.status(429).json({
       error:
@@ -99,6 +105,7 @@ export const apiRoutesLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => skipInDev,
   handler: (req: AuthRequest, res: Response) => {
     res.status(429).json({
       error:

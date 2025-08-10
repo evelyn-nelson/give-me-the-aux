@@ -92,5 +92,25 @@ export const useApi = () => {
 
     delete: (endpoint: string, options?: Omit<ApiOptions, "method">) =>
       apiCall(endpoint, { ...options, method: "DELETE" }),
+
+    // Message API methods
+    getMessages: async (groupId: string, limit = 50, offset = 0) => {
+      const params = new URLSearchParams({
+        limit: limit.toString(),
+        offset: offset.toString(),
+      });
+      const response = await apiCall(
+        `/api/messages/group/${groupId}?${params}`
+      );
+      return response.data;
+    },
+
+    createMessage: async (data: { groupId: string; content: string }) => {
+      const response = await apiCall(`/api/messages`, {
+        method: "POST",
+        body: data,
+      });
+      return response.data;
+    },
   };
 };
