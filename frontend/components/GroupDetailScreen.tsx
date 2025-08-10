@@ -11,10 +11,16 @@ import {
   Pressable,
 } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
-import { useDeleteGroup, useGroup } from "../hooks/useGroups";
+import {
+  useCreateGroupInvite,
+  useDeleteGroup,
+  useGroup,
+} from "../hooks/useGroups";
 import { ChatFloatingButton } from "./ChatFloatingButton";
 import { ChatModal } from "./ChatModal";
 import { Group, Round, User } from "../types/api";
+import * as Clipboard from "expo-clipboard";
+import { Platform } from "react-native";
 
 interface GroupDetailScreenProps {
   group: Group;
@@ -43,6 +49,7 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
 
   const deleteGroupMutation = useDeleteGroup();
   const isLoading = deleteGroupMutation.isPending;
+  const createInviteMutation = useCreateGroupInvite();
 
   // Use the group data, fallback to initialGroup if group is undefined
   const currentGroup = group || initialGroup;
@@ -135,6 +142,24 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
         },
       ]
     );
+  };
+
+  const handleInviteCopy = async () => {
+    try {
+      const invite = await createInviteMutation.mutateAsync({
+        groupId: currentGroup.id,
+      });
+      await Clipboard.setStringAsync(invite.url);
+      Alert.alert(
+        "Invite Link Copied",
+        "A new invite link was copied to your clipboard."
+      );
+    } catch (err) {
+      Alert.alert(
+        "Error",
+        (err as Error)?.message || "Failed to create invite"
+      );
+    }
   };
 
   const renderRoundCard = ({ item: round }: { item: Round }) => (
@@ -269,6 +294,12 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
               <Text style={styles.editText}>Edit</Text>
             </TouchableOpacity>
             <TouchableOpacity
+              onPress={handleInviteCopy}
+              style={styles.inviteButton}
+            >
+              <Text style={styles.inviteText}>Invite</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
               onPress={handleDeleteGroup}
               style={styles.deleteButton}
             >
@@ -374,6 +405,11 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
           <ActivityIndicator size="large" color="#FFB000" />
         </View>
       )}
+      {createInviteMutation.isPending && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#FFB000" />
+        </View>
+      )}
 
       <ChatFloatingButton
         onPress={() => setChatModalVisible(true)}
@@ -421,6 +457,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#FFB000",
     marginRight: 16,
+  },
+  inviteButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: "#282828",
+    borderWidth: 1,
+    borderColor: "#404040",
+    marginRight: 8,
+  },
+  inviteText: {
+    fontSize: 14,
+    color: "#FFB000",
+    fontWeight: "600",
   },
   deleteButton: {
     paddingHorizontal: 12,

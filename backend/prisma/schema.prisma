@@ -25,6 +25,7 @@ model User {
   refreshTokens       RefreshToken[]
   submissions         Submission[]
   votes               Vote[]
+  groupInvitesCreated GroupInvite[]
 
   @@map("users")
 }
@@ -43,6 +44,7 @@ model Group {
   messages               Message[]
   playlists              Playlist[]
   rounds                 Round[]
+  invites                GroupInvite[]
 
   @@map("groups")
 }
@@ -167,6 +169,22 @@ model RefreshToken {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("refresh_tokens")
+}
+
+model GroupInvite {
+  id              String   @id @default(cuid())
+  token           String   @unique
+  groupId         String   @map("group_id")
+  createdByUserId String   @map("created_by_user_id")
+  expiresAt       DateTime? @map("expires_at")
+  maxUses         Int?     @map("max_uses")
+  usedCount       Int      @default(0) @map("used_count")
+  isRevoked       Boolean  @default(false) @map("is_revoked")
+  createdAt       DateTime @default(now()) @map("created_at")
+  group           Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdBy       User     @relation(fields: [createdByUserId], references: [id])
+
+  @@map("group_invites")
 }
 
 enum RoundStatus {

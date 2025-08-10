@@ -165,3 +165,19 @@ export interface ApiError {
   error: string;
   code?: string;
 }
+
+// Invites
+export interface GroupInviteInfo {
+  token: string;
+  url: string;
+  expiresAt: string | null;
+  maxUses?: number | null;
+  usedCount: number;
+  isRevoked: boolean;
+  groupId: string;
+}
+
+export interface AcceptInviteResponse {
+  group: Group;
+  joined: boolean;
+}

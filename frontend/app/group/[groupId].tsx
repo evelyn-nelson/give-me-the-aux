@@ -1,13 +1,29 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { GroupDetailScreen } from "../../components/GroupDetailScreen";
 import { useGroup } from "../../hooks/useGroups";
-import { View, ActivityIndicator, StyleSheet } from "react-native";
+import { View, ActivityIndicator, StyleSheet, BackHandler } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 
 export default function GroupDetailRoute() {
   const { groupId } = useLocalSearchParams<{ groupId: string }>();
   const router = useRouter();
+  const navigation = useNavigation() as { canGoBack?: () => boolean };
   const { data: group, isLoading } = useGroup(groupId ?? "");
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (
+        typeof navigation.canGoBack === "function" &&
+        navigation.canGoBack()
+      ) {
+        return false; // let default handler pop the screen
+      }
+      router.replace("/");
+      return true;
+    });
+    return () => sub.remove();
+  }, [navigation, router]);
 
   if (isLoading || !group) {
     return (
@@ -20,7 +36,16 @@ export default function GroupDetailRoute() {
   return (
     <GroupDetailScreen
       group={group}
-      onBack={() => router.back()}
+      onBack={() => {
+        if (
+          typeof navigation.canGoBack === "function" &&
+          navigation.canGoBack()
+        ) {
+          router.back();
+        } else {
+          router.replace("/");
+        }
+      }}
       onRoundPress={(round) =>
         router.push({
           pathname: "/round/[roundId]",

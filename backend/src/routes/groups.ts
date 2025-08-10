@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 import { requireAuth, AuthRequest } from "../middleware/auth";
 import { apiRoutesLimiter } from "../middleware/rateLimit";
 
@@ -62,49 +62,51 @@ router.post(
           .json({ error: "Max votes per song must be between 1 and 10" });
       }
 
-      const group = await prisma.$transaction(async (tx) => {
-        // Create the group
-        const newGroup = await tx.group.create({
-          data: {
-            name: name.trim(),
-            adminId: userId,
-            submissionDurationDays: settings.submissionDurationDays,
-            votingDurationDays: settings.votingDurationDays,
-            votesPerUserPerRound: settings.votesPerUserPerRound,
-            maxVotesPerSong: settings.maxVotesPerSong,
-          },
-          include: {
-            admin: {
-              select: {
-                id: true,
-                displayName: true,
-                avatarUrl: true,
-              },
+      const group = await prisma.$transaction(
+        async (tx: Prisma.TransactionClient) => {
+          // Create the group
+          const newGroup = await tx.group.create({
+            data: {
+              name: name.trim(),
+              adminId: userId,
+              submissionDurationDays: settings.submissionDurationDays,
+              votingDurationDays: settings.votingDurationDays,
+              votesPerUserPerRound: settings.votesPerUserPerRound,
+              maxVotesPerSong: settings.maxVotesPerSong,
             },
-            members: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    displayName: true,
-                    avatarUrl: true,
+            include: {
+              admin: {
+                select: {
+                  id: true,
+                  displayName: true,
+                  avatarUrl: true,
+                },
+              },
+              members: {
+                include: {
+                  user: {
+                    select: {
+                      id: true,
+                      displayName: true,
+                      avatarUrl: true,
+                    },
                   },
                 },
               },
             },
-          },
-        });
+          });
 
-        // Add the creator as a member
-        await tx.groupMember.create({
-          data: {
-            groupId: newGroup.id,
-            userId: userId,
-          },
-        });
+          // Add the creator as a member
+          await tx.groupMember.create({
+            data: {
+              groupId: newGroup.id,
+              userId: userId,
+            },
+          });
 
-        return newGroup;
-      });
+          return newGroup;
+        }
+      );
 
       res.status(201).json({ data: group });
     } catch (error) {
@@ -476,7 +478,7 @@ router.delete(
           .json({ error: "Group not found or you are not the admin" });
       }
 
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         await tx.vote.deleteMany({
           where: {
             submission: {
@@ -582,25 +584,33 @@ router.get(
       }
 
       // Get all submissions for this round
-      const submissions = await prisma.submission.findMany({
-        where: {
-          roundId: roundId,
-        },
-        select: {
-          userId: true,
-        },
-      });
+      const submissions: Array<{ userId: string }> =
+        await prisma.submission.findMany({
+          where: {
+            roundId: roundId,
+          },
+          select: {
+            userId: true,
+          },
+        });
 
-      const submittedUserIds = new Set(submissions.map((s) => s.userId));
+      const submittedUserIds = new Set(
+        submissions.map((s: { userId: string }) => s.userId)
+      );
 
       // Map members with submission status
-      const membersWithStatus = group.members.map((member) => ({
-        id: member.user.id,
-        displayName: member.user.displayName,
-        avatarUrl: member.user.avatarUrl,
-        hasSubmitted: submittedUserIds.has(member.user.id),
-        isCurrentUser: member.user.id === userId,
-      }));
+      type MemberWithUser = {
+        user: { id: string; displayName: string; avatarUrl: string | null };
+      };
+      const membersWithStatus = (group.members as MemberWithUser[]).map(
+        (member: MemberWithUser) => ({
+          id: member.user.id,
+          displayName: member.user.displayName,
+          avatarUrl: member.user.avatarUrl,
+          hasSubmitted: submittedUserIds.has(member.user.id),
+          isCurrentUser: member.user.id === userId,
+        })
+      );
 
       res.json({ data: membersWithStatus });
     } catch (error) {

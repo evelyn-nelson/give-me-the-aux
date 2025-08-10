@@ -6,6 +6,7 @@ import {
   UpdateGroupData,
   Round,
   GroupMemberWithSubmissionStatus,
+  GroupInviteInfo,
 } from "../types/api";
 import { groupKeys, roundKeys } from "./queryKeys";
 
@@ -130,5 +131,20 @@ export const useGroupRoundMembers = (groupId: string, roundId: string) => {
     },
     enabled: !!groupId && !!roundId,
     staleTime: 1000 * 30, // Consider data fresh for 30 seconds
+  });
+};
+
+export const useCreateGroupInvite = () => {
+  const api = useApi();
+  return useMutation({
+    mutationFn: async (params: {
+      groupId: string;
+      expiresInDays?: number;
+      maxUses?: number;
+    }) => {
+      const { groupId, ...body } = params;
+      const response = await api.post(`/api/invites/${groupId}/invites`, body);
+      return response.data as GroupInviteInfo;
+    },
   });
 };
