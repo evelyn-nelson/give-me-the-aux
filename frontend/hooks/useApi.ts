@@ -132,5 +132,11 @@ export const useApi = () => {
       });
       return response.data as { revoked: number };
     },
+
+    // Account
+    deleteAccount: async () => {
+      const response = await apiCall(`/api/auth/me`, { method: "DELETE" });
+      return response.data as { message: string };
+    },
   };
 };

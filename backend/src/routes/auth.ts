@@ -7,6 +7,9 @@ import {
   authEndpointsLimiter,
   userSpecificLimiter,
 } from "../middleware/rateLimit";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 const router = Router();
 
@@ -173,6 +176,139 @@ router.post(
     } catch (error) {
       console.error("Logout error:", error);
       res.status(500).json({ error: "Failed to logout" });
+    }
+  }
+);
+
+// Delete current user and all their data
+router.delete(
+  "/me",
+  userSpecificLimiter,
+  requireAuth,
+  async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+
+      await prisma.$transaction(async (tx) => {
+        // 1. Delete groups where the user is admin, including related data
+        const adminGroups = await tx.group.findMany({
+          where: { adminId: userId },
+          select: { id: true },
+        });
+        const adminGroupIds = adminGroups.map((g) => g.id);
+
+        if (adminGroupIds.length > 0) {
+          // Votes on submissions in those groups
+          await tx.vote.deleteMany({
+            where: {
+              submission: {
+                round: {
+                  groupId: { in: adminGroupIds },
+                },
+              },
+            },
+          });
+
+          // Submissions in those groups
+          await tx.submission.deleteMany({
+            where: {
+              round: { groupId: { in: adminGroupIds } },
+            },
+          });
+
+          // Rounds in those groups (NotificationEvents cascade on round)
+          await tx.round.deleteMany({
+            where: { groupId: { in: adminGroupIds } },
+          });
+
+          // Group messages
+          await tx.message.deleteMany({
+            where: { groupId: { in: adminGroupIds } },
+          });
+
+          // Group invites
+          await tx.groupInvite.deleteMany({
+            where: { groupId: { in: adminGroupIds } },
+          });
+
+          // Playlists tied to those groups (and their items)
+          const groupPlaylists = await tx.playlist.findMany({
+            where: { groupId: { in: adminGroupIds } },
+            select: { id: true },
+          });
+          const groupPlaylistIds = groupPlaylists.map((p) => p.id);
+          if (groupPlaylistIds.length > 0) {
+            await tx.playlistItem.deleteMany({
+              where: { playlistId: { in: groupPlaylistIds } },
+            });
+            await tx.playlist.deleteMany({
+              where: { id: { in: groupPlaylistIds } },
+            });
+          }
+
+          // Group memberships
+          await tx.groupMember.deleteMany({
+            where: { groupId: { in: adminGroupIds } },
+          });
+
+          // Finally delete groups
+          await tx.group.deleteMany({ where: { id: { in: adminGroupIds } } });
+        }
+
+        // 2. Delete votes cast by the user
+        await tx.vote.deleteMany({ where: { userId } });
+
+        // 3. Delete votes on the user's submissions, then the submissions
+        const userSubmissions = await tx.submission.findMany({
+          where: { userId },
+          select: { id: true },
+        });
+        const userSubmissionIds = userSubmissions.map((s) => s.id);
+        if (userSubmissionIds.length > 0) {
+          await tx.vote.deleteMany({
+            where: { submissionId: { in: userSubmissionIds } },
+          });
+          await tx.submission.deleteMany({
+            where: { id: { in: userSubmissionIds } },
+          });
+        }
+
+        // 4. Remove user from other groups
+        await tx.groupMember.deleteMany({ where: { userId } });
+
+        // 5. Delete user's messages (any remaining)
+        await tx.message.deleteMany({ where: { userId } });
+
+        // 6. Delete invites created by the user
+        await tx.groupInvite.deleteMany({ where: { createdByUserId: userId } });
+
+        // 7. Delete user's playlists and items
+        const userPlaylists = await tx.playlist.findMany({
+          where: { userId },
+          select: { id: true },
+        });
+        const userPlaylistIds = userPlaylists.map((p) => p.id);
+        if (userPlaylistIds.length > 0) {
+          await tx.playlistItem.deleteMany({
+            where: { playlistId: { in: userPlaylistIds } },
+          });
+          await tx.playlist.deleteMany({
+            where: { id: { in: userPlaylistIds } },
+          });
+        }
+
+        // 8. Revoke push tokens and refresh tokens
+        await tx.pushToken.deleteMany({ where: { userId } });
+        await tx.refreshToken.deleteMany({ where: { userId } });
+
+        // 9. Finally delete the user
+        await tx.user.delete({ where: { id: userId } });
+      });
+
+      return res.json({ data: { message: "Account and data deleted" } });
+    } catch (error) {
+      console.error("Delete user error:", error);
+      return res.status(500).json({ error: "Failed to delete account" });
     }
   }
 );

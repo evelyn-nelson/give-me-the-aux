@@ -66,8 +66,20 @@ export const SettingsScreen: React.FC = () => {
         {
           text: "Delete",
           style: "destructive",
-          onPress: () => {
-            console.log("Account deletion requested");
+          onPress: async () => {
+            try {
+              await api.deleteAccount();
+              Alert.alert(
+                "Account Deleted",
+                "Your account and data have been removed."
+              );
+              logout();
+            } catch (e) {
+              Alert.alert(
+                "Delete Failed",
+                "Unable to delete your account right now."
+              );
+            }
           },
         },
       ]
@@ -206,20 +218,11 @@ export const SettingsScreen: React.FC = () => {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Support</Text>
-        {renderSettingItem("Help & FAQ", "Get help and find answers", () => {
-          Alert.alert("Help & FAQ", "Help section coming soon!");
-        })}
         {renderSettingItem(
           "Contact Support",
           SUPPORT_EMAIL,
           handleContactSupport
         )}
-        {renderSettingItem("About", "App version and information", () => {
-          Alert.alert(
-            "About",
-            "Give Me The Aux v1.0.0\n\nA music voting app for friends!"
-          );
-        })}
       </View>
 
       <View style={styles.section}>
