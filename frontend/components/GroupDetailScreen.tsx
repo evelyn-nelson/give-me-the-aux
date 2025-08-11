@@ -15,6 +15,8 @@ import {
   useCreateGroupInvite,
   useDeleteGroup,
   useGroup,
+  useKickMember,
+  useLeaveGroup,
 } from "../hooks/useGroups";
 import { ChatFloatingButton } from "./ChatFloatingButton";
 import { ChatModal } from "./ChatModal";
@@ -50,6 +52,8 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
   const deleteGroupMutation = useDeleteGroup();
   const isLoading = deleteGroupMutation.isPending;
   const createInviteMutation = useCreateGroupInvite();
+  const leaveGroupMutation = useLeaveGroup();
+  const kickMemberMutation = useKickMember();
 
   // Use the group data, fallback to initialGroup if group is undefined
   const currentGroup = group || initialGroup;
@@ -265,18 +269,59 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
         </Text>
       </View>
       <View style={styles.memberInfo}>
-        <Text style={styles.memberName}>
-          {item.user.displayName || "Unknown User"}
-        </Text>
-        <View style={styles.memberDetails}>
-          <View style={styles.memberBadges}>
+        <View style={styles.memberRow}>
+          <View style={styles.memberLeftRow}>
+            <Text style={styles.memberName}>
+              {item.user.displayName || "Unknown User"}
+            </Text>
             {item.user.id === currentGroup.adminId && (
               <Text style={styles.adminLabel}>Admin</Text>
             )}
           </View>
-          <Text style={styles.voteTotal}>
-            {item.totalVotes} vote{item.totalVotes !== 1 ? "s" : ""}
-          </Text>
+          <View style={styles.memberRightRow}>
+            <Text style={styles.voteTotal}>
+              {item.totalVotes} vote{item.totalVotes !== 1 ? "s" : ""}
+            </Text>
+            {isAdmin && item.user.id !== currentGroup.adminId && (
+              <Pressable
+                onPress={() => {
+                  Alert.alert(
+                    "Remove Member",
+                    `Remove ${
+                      item.user.displayName || "this user"
+                    } from the group?`,
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Remove",
+                        style: "destructive",
+                        onPress: async () => {
+                          try {
+                            await kickMemberMutation.mutateAsync({
+                              groupId: currentGroup.id,
+                              userId: item.user.id,
+                            });
+                          } catch (err) {
+                            Alert.alert(
+                              "Error",
+                              (err as Error)?.message ||
+                                "Failed to remove member"
+                            );
+                          }
+                        },
+                      },
+                    ]
+                  );
+                }}
+                style={({ pressed }) => [
+                  styles.kickLink,
+                  pressed && styles.kickLinkPressed,
+                ]}
+              >
+                <Text style={styles.kickLinkText}>Remove</Text>
+              </Pressable>
+            )}
+          </View>
         </View>
       </View>
     </View>
@@ -326,6 +371,40 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
           <Text style={styles.createdDate}>
             Created {formatDate(currentGroup.createdAt)}
           </Text>
+          {!isAdmin && (
+            <Pressable
+              style={({ pressed }) => [
+                styles.leaveButton,
+                pressed && styles.leaveButtonPressed,
+              ]}
+              onPress={() => {
+                Alert.alert(
+                  "Leave Group",
+                  "Are you sure you want to leave this group?",
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Leave",
+                      style: "destructive",
+                      onPress: async () => {
+                        try {
+                          await leaveGroupMutation.mutateAsync(currentGroup.id);
+                          onBack();
+                        } catch (error) {
+                          Alert.alert(
+                            "Error",
+                            (error as Error)?.message || "Failed to leave group"
+                          );
+                        }
+                      },
+                    },
+                  ]
+                );
+              }}
+            >
+              <Text style={styles.leaveButtonText}>Leave Group</Text>
+            </Pressable>
+          )}
         </View>
 
         <View style={styles.tabs}>
@@ -406,6 +485,11 @@ export const GroupDetailScreen: React.FC<GroupDetailScreenProps> = ({
         </View>
       )}
       {createInviteMutation.isPending && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#FFB000" />
+        </View>
+      )}
+      {(leaveGroupMutation.isPending || kickMemberMutation.isPending) && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color="#FFB000" />
         </View>
@@ -643,16 +727,24 @@ const styles = StyleSheet.create({
   memberInfo: {
     flex: 1,
   },
+  memberRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  memberLeftRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexShrink: 1,
+  },
+  memberRightRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   memberName: {
     fontSize: 16,
     fontWeight: "500",
     color: "white",
-    marginBottom: 2,
-  },
-  memberDetails: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
   },
   memberBadges: {
     flexDirection: "row",
@@ -662,11 +754,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#FFB000",
     fontWeight: "600",
+    marginLeft: 8,
   },
   voteTotal: {
     fontSize: 12,
     color: "#B3B3B3",
     fontWeight: "500",
+    marginRight: 12,
+  },
+  kickLink: {
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+    borderRadius: 6,
+  },
+  kickLinkPressed: {
+    transform: [{ scale: 0.98 }],
+  },
+  kickLinkText: {
+    color: "#E53E3E",
+    fontSize: 12,
+    fontWeight: "700",
   },
   statTextDate: {
     flexShrink: 1,
@@ -705,5 +812,39 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#B3B3B3",
     marginTop: 12,
+  },
+  kickButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: "#E53E3E",
+    borderWidth: 1,
+    borderColor: "#404040",
+  },
+  kickButtonPressed: {
+    transform: [{ scale: 0.98 }],
+  },
+  kickButtonText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  leaveButton: {
+    marginTop: 12,
+    alignSelf: "flex-start",
+    backgroundColor: "#282828",
+    borderWidth: 1,
+    borderColor: "#404040",
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+  },
+  leaveButtonPressed: {
+    transform: [{ scale: 0.98 }],
+  },
+  leaveButtonText: {
+    color: "#E53E3E",
+    fontWeight: "600",
+    fontSize: 14,
   },
 });

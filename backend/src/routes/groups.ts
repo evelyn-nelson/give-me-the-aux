@@ -622,4 +622,99 @@ router.get(
   }
 );
 
+// Leave group (non-admin only)
+router.delete(
+  "/:id/members/me",
+  apiRoutesLimiter,
+  requireAuth,
+  async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+
+      // Ensure group exists and user is a member
+      const group = await prisma.group.findFirst({
+        where: {
+          id,
+          members: { some: { userId } },
+        },
+      });
+
+      if (!group) {
+        return res
+          .status(404)
+          .json({ error: "Group not found or you are not a member" });
+      }
+
+      if (group.adminId === userId) {
+        return res.status(400).json({
+          error:
+            "Admins cannot leave their own group. Transfer admin role or delete the group.",
+          code: "ADMIN_CANNOT_LEAVE",
+        });
+      }
+
+      await prisma.groupMember.delete({
+        where: {
+          groupId_userId: { groupId: id, userId },
+        },
+      });
+
+      return res.json({ data: { message: "Left group successfully" } });
+    } catch (error) {
+      console.error("Leave group error:", error);
+      res.status(500).json({ error: "Failed to leave group" });
+    }
+  }
+);
+
+// Kick member (admin only)
+router.delete(
+  "/:id/members/:userId",
+  apiRoutesLimiter,
+  requireAuth,
+  async (req: AuthRequest, res) => {
+    try {
+      const { id, userId: targetUserId } = req.params;
+      const requesterId = req.user!.id;
+
+      // Verify admin
+      const group = await prisma.group.findFirst({
+        where: { id, adminId: requesterId },
+      });
+      if (!group) {
+        return res
+          .status(404)
+          .json({ error: "Group not found or you are not the admin" });
+      }
+
+      if (group.adminId === targetUserId) {
+        return res.status(400).json({
+          error: "Cannot remove the group admin",
+          code: "CANNOT_REMOVE_ADMIN",
+        });
+      }
+
+      // Ensure target is a member
+      const membership = await prisma.groupMember.findUnique({
+        where: { groupId_userId: { groupId: id, userId: targetUserId } },
+      });
+      if (!membership) {
+        return res
+          .status(404)
+          .json({ error: "User is not a member of this group" });
+      }
+
+      await prisma.groupMember.delete({
+        where: { groupId_userId: { groupId: id, userId: targetUserId } },
+      });
+
+      return res.json({ data: { message: "Member removed successfully" } });
+    } catch (error) {
+      console.error("Kick member error:", error);
+      res.status(500).json({ error: "Failed to remove member" });
+    }
+  }
+);
+
 export default router;

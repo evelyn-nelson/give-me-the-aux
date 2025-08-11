@@ -148,3 +148,42 @@ export const useCreateGroupInvite = () => {
     },
   });
 };
+
+export const useLeaveGroup = () => {
+  const api = useApi();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (groupId: string) => {
+      const response = await api.delete(`/api/groups/${groupId}/members/me`);
+      return response.data as { message: string };
+    },
+    onSuccess: (_, groupId) => {
+      // Remove group detail cache and refresh lists
+      queryClient.removeQueries({ queryKey: groupKeys.detail(groupId) });
+      queryClient.invalidateQueries({ queryKey: groupKeys.lists() });
+    },
+  });
+};
+
+export const useKickMember = () => {
+  const api = useApi();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: { groupId: string; userId: string }) => {
+      const { groupId, userId } = params;
+      const response = await api.delete(
+        `/api/groups/${groupId}/members/${userId}`
+      );
+      return response.data as { message: string };
+    },
+    onSuccess: (_, variables) => {
+      // Refresh group detail so members list updates
+      queryClient.invalidateQueries({
+        queryKey: groupKeys.detail(variables.groupId),
+      });
+      queryClient.invalidateQueries({ queryKey: groupKeys.lists() });
+    },
+  });
+};
