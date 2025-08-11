@@ -28,6 +28,32 @@ router.post("/token", requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
+// Revoke push tokens for the authenticated user. If a token is provided, only revoke that token; otherwise revoke all user tokens.
+router.delete("/token", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const { token } = (req.body || {}) as { token?: string };
+
+    let result;
+    if (token) {
+      result = await prisma.pushToken.updateMany({
+        where: { userId, token },
+        data: { isRevoked: true },
+      });
+    } else {
+      result = await prisma.pushToken.updateMany({
+        where: { userId },
+        data: { isRevoked: true },
+      });
+    }
+
+    return res.json({ data: { revoked: result.count } });
+  } catch (error) {
+    console.error("/api/notifications/token DELETE error", error);
+    res.status(500).json({ error: "Failed to revoke push token(s)" });
+  }
+});
+
 router.post("/test", requireAuth, async (req: AuthRequest, res) => {
   try {
     const userId = req.user!.id;

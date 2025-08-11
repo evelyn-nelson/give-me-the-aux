@@ -124,5 +124,13 @@ export const useApi = () => {
       });
       return response.data;
     },
+
+    revokePushToken: async (payload?: { token?: string }) => {
+      const response = await apiCall(`/api/notifications/token`, {
+        method: "DELETE",
+        body: payload,
+      });
+      return response.data as { revoked: number };
+    },
   };
 };

@@ -9,11 +9,35 @@ import {
   Switch,
 } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
+import { useApi } from "../hooks/useApi";
+import { useSettings } from "../contexts/SettingsContext";
 
 export const SettingsScreen: React.FC = () => {
   const { user, logout } = useAuth();
-  const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
-  const [darkModeEnabled, setDarkModeEnabled] = React.useState(true);
+  const api = useApi();
+  const { notificationsEnabled, setNotificationsEnabled } = useSettings();
+
+  const handleToggleNotifications = async (next: boolean) => {
+    // Optimistically update persisted setting
+    await setNotificationsEnabled(next);
+    try {
+      if (next) {
+        // Enabling: global bootstrap will register the token
+      } else {
+        // Disabling: revoke user's tokens so we stop sending pushes
+        await api.revokePushToken();
+      }
+    } catch (err) {
+      Alert.alert(
+        "Notifications",
+        next
+          ? "Failed to enable notifications"
+          : "Failed to disable notifications"
+      );
+      // Revert persisted setting on failure
+      await setNotificationsEnabled(!next);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
@@ -116,20 +140,9 @@ export const SettingsScreen: React.FC = () => {
           undefined,
           <Switch
             value={notificationsEnabled}
-            onValueChange={setNotificationsEnabled}
+            onValueChange={handleToggleNotifications}
             trackColor={{ false: "#404040", true: "#FFB000" }}
             thumbColor={notificationsEnabled ? "#fff" : "#f4f3f4"}
-          />
-        )}
-        {renderSettingItem(
-          "Dark Mode",
-          "Use dark theme throughout the app",
-          undefined,
-          <Switch
-            value={darkModeEnabled}
-            onValueChange={setDarkModeEnabled}
-            trackColor={{ false: "#404040", true: "#FFB000" }}
-            thumbColor={darkModeEnabled ? "#fff" : "#f4f3f4"}
           />
         )}
       </View>
