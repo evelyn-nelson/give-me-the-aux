@@ -201,9 +201,6 @@ export const SettingsScreen: React.FC = () => {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Data & Privacy</Text>
-        {renderSettingItem("Export My Data", "Download all your data", () => {
-          Alert.alert("Export Data", "Data export feature coming soon!");
-        })}
         {renderSettingItem("Privacy Policy", "Read our privacy policy", () => {
           openLegalPage("/privacy");
         })}
