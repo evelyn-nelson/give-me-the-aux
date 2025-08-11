@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import * as SecureStore from "expo-secure-store";
 import { makeRedirectUri, useAuthRequest } from "expo-auth-session";
+import { Alert } from "react-native";
 
 interface User {
   id: string;
@@ -133,6 +134,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const result = await apiResponse.json();
 
+      if (!apiResponse.ok) {
+        if (result?.code === "REGION_RESTRICTED") {
+          Alert.alert(
+            "Not available in your region",
+            "Give Me The Aux is only available in the United States at this time."
+          );
+        } else {
+          Alert.alert(
+            "Login failed",
+            result?.error || "Unable to complete login. Please try again."
+          );
+        }
+        return; // Do not store any tokens
+      }
+
       if (result.data) {
         await SecureStore.setItemAsync("accessToken", result.data.accessToken);
         await SecureStore.setItemAsync(
@@ -143,6 +159,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     } catch (error) {
       console.error("Spotify auth error:", error);
+      Alert.alert("Login error", "Something went wrong. Please try again.");
     }
   };
 

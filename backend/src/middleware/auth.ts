@@ -41,6 +41,14 @@ export const requireAuth = async (
       return res.status(401).json({ error: "User not found" });
     }
 
+    // Enforce US-only access for all protected routes
+    if (user.country !== "US") {
+      return res.status(403).json({
+        error: "Service is only available in the United States",
+        code: "REGION_RESTRICTED",
+      });
+    }
+
     req.user = {
       id: user.id,
       spotifyId: user.spotifyId,

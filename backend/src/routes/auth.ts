@@ -77,6 +77,19 @@ router.post("/spotify", spotifyLoginLimiter, async (req, res) => {
         .json({ error: "Failed to get user info from Spotify" });
     }
 
+    // Enforce US-only access
+    if (spotifyUser.country !== "US") {
+      console.warn(
+        "Region restricted login attempt:",
+        spotifyUser.id,
+        spotifyUser.country
+      );
+      return res.status(403).json({
+        error: "Service is only available in the United States",
+        code: "REGION_RESTRICTED",
+      });
+    }
+
     // Create or find user and store tokens
     const user = await AuthService.findOrCreateUser(
       {

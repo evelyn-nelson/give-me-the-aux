@@ -7,11 +7,15 @@ import {
   ScrollView,
   Alert,
   Switch,
+  Linking,
 } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
 import { useApi } from "../hooks/useApi";
 import { useSettings } from "../contexts/SettingsContext";
 import * as WebBrowser from "expo-web-browser";
+import * as Clipboard from "expo-clipboard";
+
+const SUPPORT_EMAIL = "givemetheaux.evelynwebsite@gmail.com";
 
 export const SettingsScreen: React.FC = () => {
   const { user, logout } = useAuth();
@@ -19,13 +23,10 @@ export const SettingsScreen: React.FC = () => {
   const { notificationsEnabled, setNotificationsEnabled } = useSettings();
 
   const handleToggleNotifications = async (next: boolean) => {
-    // Optimistically update persisted setting
     await setNotificationsEnabled(next);
     try {
       if (next) {
-        // Enabling: global bootstrap will register the token
       } else {
-        // Disabling: revoke user's tokens so we stop sending pushes
         await api.revokePushToken();
       }
     } catch (err) {
@@ -35,7 +36,6 @@ export const SettingsScreen: React.FC = () => {
           ? "Failed to enable notifications"
           : "Failed to disable notifications"
       );
-      // Revert persisted setting on failure
       await setNotificationsEnabled(!next);
     }
   };
@@ -67,7 +67,6 @@ export const SettingsScreen: React.FC = () => {
           text: "Delete",
           style: "destructive",
           onPress: () => {
-            // Handle account deletion
             console.log("Account deletion requested");
           },
         },
@@ -88,13 +87,31 @@ export const SettingsScreen: React.FC = () => {
     const url = `${baseUrl}${path}`;
     try {
       await WebBrowser.openBrowserAsync(url, {
-        // Styling options by platform
-        toolbarColor: "#282828", // Android
-        controlsColor: "#FFB000", // iOS
+        toolbarColor: "#282828",
+        controlsColor: "#FFB000",
       });
     } catch (e) {
       Alert.alert("Error", "Unable to open link right now.");
     }
+  };
+
+  const handleContactSupport = async () => {
+    const mailtoUrl = `mailto:${SUPPORT_EMAIL}`;
+    try {
+      const supported = await Linking.canOpenURL(mailtoUrl);
+      if (supported) {
+        await Linking.openURL(mailtoUrl);
+        return;
+      }
+    } catch {}
+
+    Alert.alert("Contact Support", `Email us at ${SUPPORT_EMAIL}`, [
+      {
+        text: "Copy email",
+        onPress: () => Clipboard.setStringAsync(SUPPORT_EMAIL),
+      },
+      { text: "OK", style: "cancel" },
+    ]);
   };
 
   const renderSettingItem = (
@@ -194,13 +211,8 @@ export const SettingsScreen: React.FC = () => {
         })}
         {renderSettingItem(
           "Contact Support",
-          "Get in touch with our team",
-          () => {
-            Alert.alert(
-              "Contact Support",
-              "Contact support feature coming soon!"
-            );
-          }
+          SUPPORT_EMAIL,
+          handleContactSupport
         )}
         {renderSettingItem("About", "App version and information", () => {
           Alert.alert(
