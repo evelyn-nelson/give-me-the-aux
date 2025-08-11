@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy Policy - Give Me The Aux</title>
+    <meta name="description" content="Privacy Policy for Give Me The Aux" />
+    <style>
+      :root {
+        --bg: #191414;
+        --card: #282828;
+        --border: #404040;
+        --brand: #ffb000;
+        --text: #ffffff;
+        --text-secondary: #b3b3b3;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+          Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        line-height: 1.6;
+      }
+      .container {
+        max-width: 840px;
+        margin: 0 auto;
+        padding: 32px 16px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 24px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-weight: 600;
+      }
+      h2 {
+        margin-top: 28px;
+        font-weight: 600;
+      }
+      p,
+      li {
+        color: var(--text);
+      }
+      .muted {
+        color: var(--text-secondary);
+      }
+      a {
+        color: var(--brand);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      header,
+      footer {
+        text-align: center;
+        margin-bottom: 16px;
+      }
+      .brand {
+        color: var(--brand);
+        font-weight: 700;
+      }
+      .updated {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div class="brand">Give Me The Aux</div>
+      </header>
+
+      <div class="card">
+        <h1>Privacy Policy</h1>
+        <p class="updated">Last updated: <span id="updated-date"></span></p>
+
+        <p>
+          Welcome to <strong>Give Me The Aux</strong> ("we", "us", or "our"). We
+          respect your privacy and are committed to protecting it through our
+          compliance with this policy.
+        </p>
+
+        <h2>Information We Collect</h2>
+        <ul>
+          <li>
+            Account information from Spotify OAuth (e.g., Spotify ID, display
+            name, email).
+          </li>
+          <li>
+            Usage data related to groups, rounds, submissions, votes, and
+            messages within the app.
+          </li>
+          <li>
+            Device and log information necessary for security and performance.
+          </li>
+        </ul>
+
+        <h2>How We Use Information</h2>
+        <ul>
+          <li>
+            To provide and improve app features (groups, rounds, voting,
+            messaging).
+          </li>
+          <li>To authenticate users and secure accounts.</li>
+          <li>
+            To comply with legal obligations and enforce our Terms of Service.
+          </li>
+        </ul>
+
+        <h2>Data Retention</h2>
+        <p>
+          We retain data for as long as your account is active or as needed to
+          provide services. You can request deletion of your data through
+          support.
+        </p>
+
+        <h2>Sharing of Information</h2>
+        <p>
+          We do not sell your personal data. We may share limited information
+          with service providers (e.g., hosting, analytics) under data
+          protection agreements or as required by law.
+        </p>
+
+        <h2>Your Choices</h2>
+        <ul>
+          <li>
+            Access, update, or delete your information by contacting support.
+          </li>
+          <li>Control notifications in app settings or device OS settings.</li>
+        </ul>
+
+        <h2>Contact Us</h2>
+        <p>
+          If you have questions about this policy, contact us at
+          <a href="mailto:givemetheaux.evelynwebsite@gmail.com"
+            >givemetheaux.evelynwebsite@gmail.com</a
+          >.
+        </p>
+
+        <p class="muted">See our <a href="/terms">Terms of Service</a>.</p>
+      </div>
+
+      <footer class="muted" style="margin-top: 16px">
+        © <span id="year"></span> Give Me The Aux
+      </footer>
+    </div>
+
+    <script>
+      document.getElementById("year").textContent = new Date().getFullYear();
+      document.getElementById("updated-date").textContent = new Date()
+        .toISOString()
+        .split("T")[0];
+    </script>
+  </body>
+</html>

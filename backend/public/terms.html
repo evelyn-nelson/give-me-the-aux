@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Terms of Service - Give Me The Aux</title>
+    <meta name="description" content="Terms of Service for Give Me The Aux" />
+    <style>
+      :root {
+        --bg: #191414;
+        --card: #282828;
+        --border: #404040;
+        --brand: #ffb000;
+        --text: #ffffff;
+        --text-secondary: #b3b3b3;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+          Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        line-height: 1.6;
+      }
+      .container {
+        max-width: 840px;
+        margin: 0 auto;
+        padding: 32px 16px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 24px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-weight: 600;
+      }
+      h2 {
+        margin-top: 28px;
+        font-weight: 600;
+      }
+      p,
+      li {
+        color: var(--text);
+      }
+      .muted {
+        color: var(--text-secondary);
+      }
+      a {
+        color: var(--brand);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      header,
+      footer {
+        text-align: center;
+        margin-bottom: 16px;
+      }
+      .brand {
+        color: var(--brand);
+        font-weight: 700;
+      }
+      .updated {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div class="brand">Give Me The Aux</div>
+      </header>
+
+      <div class="card">
+        <h1>Terms of Service</h1>
+        <p class="updated">Last updated: <span id="updated-date"></span></p>
+
+        <p>
+          By accessing or using <strong>Give Me The Aux</strong> (the
+          "Service"), you agree to be bound by these Terms. If you do not agree,
+          do not use the Service.
+        </p>
+
+        <h2>1. Eligibility</h2>
+        <p>
+          You must be at least 13 years old (or the age of digital consent in
+          your jurisdiction) and capable of forming a binding contract to use
+          the Service.
+        </p>
+
+        <h2>2. Accounts and Security</h2>
+        <p>
+          You are responsible for maintaining the confidentiality of your
+          account and for all activities under your account. Notify us
+          immediately of any unauthorized use.
+        </p>
+
+        <h2>3. User Conduct</h2>
+        <ul>
+          <li>Respect others and comply with applicable laws.</li>
+          <li>
+            Do not attempt to access non-public areas or disrupt the Service.
+          </li>
+          <li>
+            Do not upload or share content that infringes others' rights or is
+            unlawful.
+          </li>
+        </ul>
+
+        <h2>4. Content and Licenses</h2>
+        <p>
+          You retain your rights to content you submit. By submitting content
+          (e.g., song submissions, messages), you grant us a non-exclusive
+          license to operate and improve the Service.
+        </p>
+
+        <h2>5. Spotify Integration</h2>
+        <p>
+          The Service integrates with Spotify. Your use of Spotify is subject to
+          Spotify's own terms and policies. We are not responsible for Spotify
+          services or outages.
+        </p>
+
+        <h2>6. Termination</h2>
+        <p>
+          We may suspend or terminate access to the Service at any time for
+          violations of these Terms or to protect the Service or its users.
+        </p>
+
+        <h2>7. Disclaimers</h2>
+        <p>
+          The Service is provided "AS IS" without warranties of any kind. We do
+          not warrant uninterrupted or error-free operation.
+        </p>
+
+        <h2>8. Limitation of Liability</h2>
+        <p>
+          To the fullest extent permitted by law, we are not liable for
+          indirect, incidental, or consequential damages, or loss of data or
+          profits.
+        </p>
+
+        <h2>9. Changes to Terms</h2>
+        <p>
+          We may update these Terms from time to time. Continued use of the
+          Service constitutes acceptance of the revised Terms.
+        </p>
+
+        <h2>10. Contact</h2>
+        <p>
+          For questions about these Terms, contact us at
+          <a href="mailto:givemetheaux.evelynwebsite@gmail.com"
+            >givemetheaux.evelynwebsite@gmail.com</a
+          >.
+        </p>
+
+        <p class="muted">Read our <a href="/privacy">Privacy Policy</a>.</p>
+      </div>
+
+      <footer class="muted" style="margin-top: 16px">
+        © <span id="year"></span> Give Me The Aux
+      </footer>
+    </div>
+
+    <script>
+      document.getElementById("year").textContent = new Date().getFullYear();
+      document.getElementById("updated-date").textContent = new Date()
+        .toISOString()
+        .split("T")[0];
+    </script>
+  </body>
+</html>

@@ -13,6 +13,7 @@ import inviteRoutes from "./routes/invites";
 import notificationRoutes from "./routes/notifications";
 import { TokenCleanupService } from "./services/tokenCleanup";
 import { RoundManagementService } from "./services/roundManagement";
+import path from "path";
 
 // Load environment variables
 if (process.env.NODE_ENV !== "production") {
@@ -28,6 +29,9 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
+// Serve static policy pages
+app.use(express.static(path.join(__dirname, "..", "public")));
+
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/spotify", spotifyRoutes);
@@ -38,6 +42,15 @@ app.use("/api/submissions", voteRoutes); // Mount votes under /api/submissions t
 app.use("/api/messages", messageRoutes);
 app.use("/api/invites", inviteRoutes);
 app.use("/api/notifications", notificationRoutes);
+
+// Human-friendly routes for static pages
+app.get("/privacy", (_req, res) => {
+  res.sendFile(path.join(__dirname, "..", "public", "privacy.html"));
+});
+
+app.get("/terms", (_req, res) => {
+  res.sendFile(path.join(__dirname, "..", "public", "terms.html"));
+});
 
 // Health check
 app.get("/health", (req, res) => {

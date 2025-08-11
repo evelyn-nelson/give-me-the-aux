@@ -11,6 +11,7 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { useApi } from "../hooks/useApi";
 import { useSettings } from "../contexts/SettingsContext";
+import * as WebBrowser from "expo-web-browser";
 
 export const SettingsScreen: React.FC = () => {
   const { user, logout } = useAuth();
@@ -72,6 +73,28 @@ export const SettingsScreen: React.FC = () => {
         },
       ]
     );
+  };
+
+  const openLegalPage = async (path: "/privacy" | "/terms") => {
+    const baseUrl = process.env.EXPO_PUBLIC_API_URL;
+    if (!baseUrl) {
+      Alert.alert(
+        "Unavailable",
+        "Server URL is not configured. Please set EXPO_PUBLIC_API_URL."
+      );
+      return;
+    }
+
+    const url = `${baseUrl}${path}`;
+    try {
+      await WebBrowser.openBrowserAsync(url, {
+        // Styling options by platform
+        toolbarColor: "#282828", // Android
+        controlsColor: "#FFB000", // iOS
+      });
+    } catch (e) {
+      Alert.alert("Error", "Unable to open link right now.");
+    }
   };
 
   const renderSettingItem = (
@@ -153,16 +176,13 @@ export const SettingsScreen: React.FC = () => {
           Alert.alert("Export Data", "Data export feature coming soon!");
         })}
         {renderSettingItem("Privacy Policy", "Read our privacy policy", () => {
-          Alert.alert("Privacy Policy", "Privacy policy feature coming soon!");
+          openLegalPage("/privacy");
         })}
         {renderSettingItem(
           "Terms of Service",
           "Read our terms of service",
           () => {
-            Alert.alert(
-              "Terms of Service",
-              "Terms of service feature coming soon!"
-            );
+            openLegalPage("/terms");
           }
         )}
       </View>
