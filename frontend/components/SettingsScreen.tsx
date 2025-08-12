@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { useApi } from "../hooks/useApi";
 import { useSettings } from "../contexts/SettingsContext";
 import * as WebBrowser from "expo-web-browser";
 import * as Clipboard from "expo-clipboard";
+import { useRouter } from "expo-router";
 
 const SUPPORT_EMAIL = "givemetheaux.evelynwebsite@gmail.com";
 
@@ -21,6 +22,13 @@ export const SettingsScreen: React.FC = () => {
   const { user, logout } = useAuth();
   const api = useApi();
   const { notificationsEnabled, setNotificationsEnabled } = useSettings();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!user) {
+      router.replace("/");
+    }
+  }, [user]);
 
   const handleToggleNotifications = async (next: boolean) => {
     await setNotificationsEnabled(next);
@@ -49,7 +57,10 @@ export const SettingsScreen: React.FC = () => {
       {
         text: "Logout",
         style: "destructive",
-        onPress: logout,
+        onPress: async () => {
+          await logout();
+          router.replace("/");
+        },
       },
     ]);
   };
@@ -73,7 +84,8 @@ export const SettingsScreen: React.FC = () => {
                 "Account Deleted",
                 "Your account and data have been removed."
               );
-              logout();
+              await logout();
+              router.replace("/");
             } catch (e) {
               Alert.alert(
                 "Delete Failed",
@@ -148,11 +160,7 @@ export const SettingsScreen: React.FC = () => {
   );
 
   if (!user) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>User not found</Text>
-      </View>
-    );
+    return null;
   }
 
   return (

@@ -64,9 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       scopes: [
         "user-read-email",
         "user-read-private",
-        "playlist-modify-public",
         "playlist-modify-private",
-        "user-library-read",
       ],
       usePKCE: true,
       redirectUri,

@@ -152,3 +152,68 @@ docker compose --profile tools run --rm -p 5555:5555 prisma studio --hostname 0.
 | `npm run schema:generate` | Quick client regeneration   | When client is out of sync   |
 | `npm run build:backend`   | Rebuild backend container   | When scripts fail            |
 | `npm run prisma:studio`   | Open database GUI           | Exploring/debugging data     |
+
+## Deploying Backend to Railway (Nixpacks)
+
+These are the steps used to deploy the backend with Railway using Nixpacks.
+
+- Root Directory: `backend`
+- Builder: Nixpacks (ignore Dockerfile)
+  - Rename `backend/Dockerfile` → `backend/Dockerfile.dev` so Railway does not auto-detect it
+- Build Command:
+
+  ```bash
+  npx prisma generate && npm run build
+  ```
+
+- Start Command:
+
+  ```bash
+  npx prisma db push && npm run start
+  ```
+
+- Healthcheck Path: `/health`
+- Env vars on the backend service:
+  - `NODE_ENV=production`
+  - `DATABASE_URL` (Railway Postgres plugin)
+  - `SPOTIFY_CLIENT_ID`
+  - `SPOTIFY_CLIENT_SECRET`
+  - `JWT_SECRET`
+  - `PORT=3000`
+
+### Database on Railway
+
+- Add a PostgreSQL service in the same Railway project
+- Ensure `DATABASE_URL` is available on the backend service (Railway typically injects it automatically)
+- Tables are created on start via `prisma db push`
+
+### Local development updates
+
+- Since the Dockerfile was renamed for production, update Compose to use it in dev:
+
+  ```yaml
+  services:
+    backend:
+      build:
+        context: ./backend
+        dockerfile: Dockerfile.dev
+      # ...rest unchanged
+
+    prisma:
+      build:
+        context: ./backend
+        dockerfile: Dockerfile.dev
+      # ...rest unchanged
+  ```
+
+- Rebuild locally: `docker compose build backend prisma`
+- Start locally: `docker compose up backend postgres -d`
+
+### Frontend API base URL
+
+- Start Expo with the deployed API base URL:
+
+  ```bash
+  cd frontend
+  EXPO_PUBLIC_API_URL=https://<your-backend-domain> npx expo start
+  ```

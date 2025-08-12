@@ -14,7 +14,7 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yourcompany.givemetheaux",
+      "bundleIdentifier": "com.evelynwebsite.givemetheaux",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -24,7 +24,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.yourcompany.givemetheaux"
+      "package": "com.evelynwebsite.givemetheaux"
     },
     "web": {
       "favicon": "./assets/favicon.png"
